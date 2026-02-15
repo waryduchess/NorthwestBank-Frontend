@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../services/biometric_service.dart';
 
 class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
+  LoginScreen({super.key});
+
+  final BiometricService _biometricService = BiometricService();
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +83,35 @@ class LoginScreen extends StatelessWidget {
                   width: double.infinity,
                   height: 50,
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () async {
+                      try {
+                        if (await _biometricService.isAvailable()) {
+                          final authenticated =
+                              await _biometricService.authenticate();
+                          if (authenticated && context.mounted) {
+                            Navigator.pushReplacementNamed(
+                                context, '/dashboard');
+                          }
+                        } else {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    'Biometría no disponible en este dispositivo'),
+                              ),
+                            );
+                          }
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Error al autenticar con biometría'),
+                            ),
+                          );
+                        }
+                      }
+                    },
                     icon: const Icon(Icons.fingerprint),
                     label: const Text('Ingresar con biometria'),
                     style: OutlinedButton.styleFrom(

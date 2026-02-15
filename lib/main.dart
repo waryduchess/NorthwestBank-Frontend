@@ -23,7 +23,7 @@ class NorthwestBankApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       initialRoute: '/login',
       routes: {
-        '/login': (_) => const LoginScreen(),
+        '/login': (_) => LoginScreen(),
         '/dashboard': (_) => const DashboardScreen(),
         '/transfers': (_) => const TransfersScreen(),
         '/transactions': (_) => const TransactionsScreen(),
