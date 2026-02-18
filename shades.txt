@@ -1,0 +1,40 @@
+Shades del sistema de colores de Northwest Bank:
+
+1. Primary Shades:
+   - #b5c5ca (100)
+   - #a1b5bc (200)
+   - #8da5ad (300)
+   - #79959e (400)
+   - #65858f (500)
+   - #517580 (600)
+   - #3d656f (700)
+   - #29555e (800)
+   - #15454d (900)
+
+2. Secondary Shades:
+   - #d1e7f0 (100)
+   - #a3cfe1 (200)
+   - #75b7d2 (300)
+   - #479fc3 (400)
+   - #1a87b4 (500)
+   - #166d90 (600)
+   - #12536c (700)
+   - #0e3948 (800)
+   - #0a1f24 (900)
+
+3. Accent Shades:
+   - #fce4d6 (100)
+   - #f9c9ad (200)
+   - #f6ae84 (300)
+   - #f3935b (400)
+   - #f07832 (500)
+   - #c06028 (600)
+   - #90481e (700)
+   - #603014 (800)
+   - #30180a (900)
+
+4. Otros colores:
+   - Éxito: #28A745
+   - Advertencia: #FFC107
+   - Info: #17A2B8
+   - Error: #D72334
