@@ -1,0 +1,36 @@
+Shades de las tarjetas de Northwest Bank:
+
+1. Tarjeta Silverstone:
+   - Accent Shades (Grises Claros):
+     - #f9f9f9 (100)
+     - #f6f6f6 (200)
+     - #f2f2f2 (300)
+     - #f0f0f0 (400)
+     - #ececec (500)
+     - #d7d7d7 (600)
+     - #a8a8a8 (700)
+     - #828282 (800)
+     - #636363 (900)
+   - Secondary Shades (Grises):
+     - #ededed (100)
+     - #e4e4e4 (200)
+     - #d7d7d7 (300)
+     - #d0d0d0 (400)
+     - #c4c4c4 (500)
+     - #b2b2b2 (600)
+     - #8b8b8b (700)
+     - #6c6c6c (800)
+     - #525252 (900)
+   - Primary Shades (Grises Oscuros a Negro):
+     - #b8b8b8 (100)
+     - #959595 (200)
+     - #656565 (300)
+     - #474747 (400)
+     - #191919 (500)
+     - #171717 (600)
+     - #121212 (700)
+     - #0e0e0e (800)
+     - #0b0b0b (900)
+   - Dark & White:
+     - Dark: #252525
+     - White: #E9E9E9
