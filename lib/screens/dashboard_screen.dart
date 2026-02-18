@@ -3,9 +3,32 @@ import '../theme/app_theme.dart';
 import '../widgets/account_card.dart';
 import '../widgets/quick_action_button.dart';
 import '../widgets/transaction_tile.dart';
+import 'card_detail_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
+
+  void _openCardDetail(
+    BuildContext context, {
+    required String tipoCuenta,
+    required String numeroCuenta,
+    required double saldo,
+    required String moneda,
+    required String imagenTarjeta,
+  }) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CardDetailScreen(
+          tipoCuenta: tipoCuenta,
+          numeroCuenta: numeroCuenta,
+          saldo: saldo,
+          moneda: moneda,
+          imagenTarjeta: imagenTarjeta,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,18 +63,36 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Tarjetas de cuentas
-            const AccountCard(
+            AccountCard(
               tipoCuenta: 'Cuenta de Ahorro',
               numeroCuenta: '**** **** **** 4521',
               saldo: 12450.75,
               moneda: 'USD',
+              imagenTarjeta: 'assets/images/tarjeta_uno.png',
+              onTap: () => _openCardDetail(
+                context,
+                tipoCuenta: 'Cuenta de Ahorro',
+                numeroCuenta: '**** **** **** 4521',
+                saldo: 12450.75,
+                moneda: 'USD',
+                imagenTarjeta: 'assets/images/tarjeta_uno.png',
+              ),
             ),
             const SizedBox(height: 12),
-            const AccountCard(
+            AccountCard(
               tipoCuenta: 'Cuenta Corriente',
               numeroCuenta: '**** **** **** 7833',
               saldo: 3200.00,
               moneda: 'USD',
+              imagenTarjeta: 'assets/images/tarjeta_dos.png',
+              onTap: () => _openCardDetail(
+                context,
+                tipoCuenta: 'Cuenta Corriente',
+                numeroCuenta: '**** **** **** 7833',
+                saldo: 3200.00,
+                moneda: 'USD',
+                imagenTarjeta: 'assets/images/tarjeta_dos.png',
+              ),
             ),
 
             const SizedBox(height: 24),
