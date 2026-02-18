@@ -17,10 +17,10 @@ class LoginScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.account_balance,
-                  size: 80,
-                  color: AppTheme.primaryColor,
+                Image.asset(
+                  'assets/images/logo.png',
+                  width: 180,
+                  height: 180,
                 ),
                 const SizedBox(height: 16),
                 const Text(
