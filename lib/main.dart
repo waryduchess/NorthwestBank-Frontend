@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:northwestbank/screens/create_account_screen.dart';
 import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -24,6 +25,7 @@ class NorthwestBankApp extends StatelessWidget {
       initialRoute: '/login',
       routes: {
         '/login': (_) => LoginScreen(),
+        '/account': (_) => CreateAccountScreen(),
         '/dashboard': (_) => const DashboardScreen(),
         '/transfers': (_) => const TransfersScreen(),
         '/transactions': (_) => const TransactionsScreen(),

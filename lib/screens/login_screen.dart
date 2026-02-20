@@ -82,6 +82,20 @@ class LoginScreen extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushReplacementNamed(context, '/account');
+                    },
+                    child: const Text(
+                      'Crear cuenta',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
                   child: OutlinedButton.icon(
                     onPressed: () async {
                       try {
