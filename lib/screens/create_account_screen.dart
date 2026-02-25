@@ -28,7 +28,7 @@ class CreateAccountScreen extends StatelessWidget {
                     color: AppTheme.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 16),
                 TextField(
                   decoration: const InputDecoration(
                     labelText: 'Nombre(s)',
@@ -82,7 +82,7 @@ class CreateAccountScreen extends StatelessWidget {
                 TextField(
                   obscureText: true,
                   decoration: const InputDecoration(
-                    labelText: 'Confirmarcontraseña',
+                    labelText: 'Confirmar contraseña',
                     prefixIcon: Icon(Icons.lock_rounded),
                     suffixIcon: Icon(Icons.visibility_off),
                   ),
