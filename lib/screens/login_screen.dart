@@ -43,7 +43,7 @@ class LoginScreen extends StatelessWidget {
                 TextField(
                   decoration: const InputDecoration(
                     labelText: 'Correo electronico',
-                    prefixIcon: Icon(Icons.email_outlined),
+                    prefixIcon: Icon(Icons.email_rounded),
                   ),
                   keyboardType: TextInputType.emailAddress,
                 ),
@@ -51,8 +51,8 @@ class LoginScreen extends StatelessWidget {
                 TextField(
                   obscureText: true,
                   decoration: const InputDecoration(
-                    labelText: 'Contrasena',
-                    prefixIcon: Icon(Icons.lock_outline),
+                    labelText: 'Contraseña',
+                    prefixIcon: Icon(Icons.lock_rounded),
                     suffixIcon: Icon(Icons.visibility_off),
                   ),
                 ),
@@ -61,7 +61,7 @@ class LoginScreen extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () {},
-                    child: const Text('Olvidaste tu contrasena?'),
+                    child: const Text('Olvidaste tu contraseña?'),
                   ),
                 ),
                 const SizedBox(height: 16),

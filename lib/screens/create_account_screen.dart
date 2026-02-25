@@ -16,23 +16,15 @@ class CreateAccountScreen extends StatelessWidget {
               children: [
                 Image.asset(
                   'assets/images/logo.png',
-                  width: 180,
-                  height: 180,
+                  width: 100,
+                  height: 100,
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'NorthwestBank',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
+                
                 const SizedBox(height: 8),
                 const Text(
                   'Crea tu cuenta',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 28,
                     color: AppTheme.textSecondary,
                   ),
                 ),
@@ -40,16 +32,59 @@ class CreateAccountScreen extends StatelessWidget {
                 TextField(
                   decoration: const InputDecoration(
                     labelText: 'Nombre(s)',
-                    prefixIcon: Icon(Icons.email_outlined),
+                    prefixIcon: Icon(Icons.person_rounded),
                   ),
-                  keyboardType: TextInputType.emailAddress,
                 ),
+
+                const SizedBox(height: 16),
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: 'Apellido paterno',
+                    prefixIcon: Icon(Icons.person_rounded),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: 'Apellido materno',
+                    prefixIcon: Icon(Icons.person_rounded),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: 'Telefono',
+                    prefixIcon: Icon(Icons.phone_rounded),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: 'Correo electronico',
+                    prefixIcon: Icon(Icons.email_rounded),
+                  ),
+                ),
+
                 const SizedBox(height: 16),
                 TextField(
                   obscureText: true,
                   decoration: const InputDecoration(
-                    labelText: 'Primer apellido',
-                    prefixIcon: Icon(Icons.lock_outline),
+                    labelText: 'Contraseña',
+                    prefixIcon: Icon(Icons.lock_rounded),
+                    suffixIcon: Icon(Icons.visibility_off),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+                TextField(
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirmarcontraseña',
+                    prefixIcon: Icon(Icons.lock_rounded),
+                    suffixIcon: Icon(Icons.visibility_off),
                   ),
                 ),
 
