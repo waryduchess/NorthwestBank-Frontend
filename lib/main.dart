@@ -9,6 +9,7 @@ import 'screens/transactions_screen.dart';
 import 'screens/payments_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/cards_gallery_screen.dart';
 
 void main() {
   runApp(const NorthwestBankApp());
@@ -29,6 +30,7 @@ class NorthwestBankApp extends StatelessWidget {
         '/login': (_) => LoginScreen(),
         '/account': (_) => CreateAccountScreen(),
         '/dashboard': (_) => const DashboardScreen(),
+        '/cards-gallery': (_) => const CardsGalleryScreen(),
         '/transfers': (_) => const TransfersScreen(),
         '/transactions': (_) => const TransactionsScreen(),
         '/payments': (_) => const PaymentsScreen(),
