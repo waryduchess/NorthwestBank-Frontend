@@ -1,74 +1,608 @@
 import 'package:flutter/material.dart';
+import '../models/card_model.dart';
 import '../theme/app_theme.dart';
 
-class CardDetailScreen extends StatelessWidget {
-  final String tipoCuenta;
-  final String numeroCuenta;
-  final double saldo;
-  final String moneda;
-  final String imagenTarjeta;
+class CardDetailScreen extends StatefulWidget {
+  final CardModel card;
 
   const CardDetailScreen({
     super.key,
-    required this.tipoCuenta,
-    required this.numeroCuenta,
-    required this.saldo,
-    required this.moneda,
-    required this.imagenTarjeta,
+    required this.card,
   });
 
   @override
+  State<CardDetailScreen> createState() => _CardDetailScreenState();
+}
+
+class _CardDetailScreenState extends State<CardDetailScreen> {
+  String activeTab = 'movimientos'; // movimientos, informacion, estado
+
+  @override
   Widget build(BuildContext context) {
+    var isMobile = MediaQuery.of(context).size.width < 600;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(tipoCuenta),
+        title: Text(widget.card.tipoCuenta),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Imagen de la tarjeta con info superpuesta
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage(imagenTarjeta),
-                    fit: BoxFit.cover,
+      body: isMobile
+          ? _buildMobileLayout()
+          : _buildDesktopLayout(),
+    );
+  }
+
+  Widget _buildMobileLayout() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Tarjeta grande
+                _buildCardWidget(),
+                const SizedBox(height: 24),
+
+                // Datos del usuario
+                _buildUserDataCard(),
+              ],
+            ),
+          ),
+
+          // TabBar
+          _buildTabBar(),
+
+          // Contenido dinámico según la pestaña
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: _buildTabContent(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Row(
+        children: [
+          // Izquierda: Datos del usuario
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Datos del usuario',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
                   ),
-                  borderRadius: BorderRadius.circular(16),
                 ),
-                clipBehavior: Clip.hardEdge,
-                child: const SizedBox.shrink(),
+                const SizedBox(height: 16),
+                _buildUserDataCard(),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 32),
+
+          // Derecha: Tarjeta y TabBar
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Tarjeta',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildCardWidget(),
+                  const SizedBox(height: 24),
+
+                  // TabBar
+                  _buildTabBar(),
+                  const SizedBox(height: 16),
+
+                  // Contenido
+                  _buildTabContent(),
+                ],
               ),
             ),
-            const SizedBox(height: 24),
+          ),
+        ],
+      ),
+    );
+  }
 
-            // Detalles de la cuenta
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+  Widget _buildCardWidget() {
+    return Card(
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        width: double.infinity,
+        height: 220,
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage(widget.card.imagenTarjeta),
+            fit: BoxFit.cover,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              widget.card.tipoCuenta,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    _buildDetailRow('Tipo de cuenta', tipoCuenta),
-                    const Divider(),
-                    _buildDetailRow('Numero de cuenta', numeroCuenta),
-                    const Divider(),
-                    _buildDetailRow('Saldo disponible', '\$${saldo.toStringAsFixed(2)}'),
-                    const Divider(),
-                    _buildDetailRow('Moneda', moneda),
-                  ],
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.card.numeroCuenta,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 2,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 12),
+                Text(
+                  '\$${widget.card.saldo.toStringAsFixed(2)} ${widget.card.moneda}',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildUserDataCard() {
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Avatar usuario
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  (widget.card.nombreUsuario?.isNotEmpty ?? false)
+                      ? widget.card.nombreUsuario![0]
+                      : 'U',
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Nombre completo
+            Text(
+              widget.card.nombreUsuario ?? '',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Tipo de cuenta
+            _buildUserDataRow('Tipo de Cuenta', widget.card.tipoCuenta),
+            const SizedBox(height: 12),
+
+            // Saldo
+            _buildUserDataRow(
+              'Saldo Disponible',
+              '\$${widget.card.saldo.toStringAsFixed(2)} ${widget.card.moneda}',
+              isHighlight: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          _buildTabButton('Movimientos', 'movimientos'),
+          _buildTabButton('Información', 'informacion'),
+          _buildTabButton('Estado de cuenta', 'estado'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabButton(String label, String tabValue) {
+    final isActive = activeTab == tabValue;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            activeTab = tabValue;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: isActive ? AppTheme.primaryColor : Colors.transparent,
+                width: isActive ? 3 : 0,
+              ),
+            ),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+              color: isActive ? AppTheme.primaryColor : AppTheme.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabContent() {
+    switch (activeTab) {
+      case 'movimientos':
+        return _buildMovimientosTab();
+      case 'informacion':
+        return _buildInformacionTab();
+      case 'estado':
+        return _buildEstadoTab();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildMovimientosTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Últimos movimientos',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildMovimiento(
+          'Transferencia enviada',
+          'A Juan Pérez',
+          -500.00,
+          '12 Feb 2026',
+          Icons.arrow_upward,
+        ),
+        const SizedBox(height: 12),
+        _buildMovimiento(
+          'Depósito recibido',
+          'Nómina mensual',
+          3500.00,
+          '10 Feb 2026',
+          Icons.arrow_downward,
+        ),
+        const SizedBox(height: 12),
+        _buildMovimiento(
+          'Pago de servicio',
+          'Electricidad',
+          -85.50,
+          '8 Feb 2026',
+          Icons.bolt,
+        ),
+        const SizedBox(height: 12),
+        _buildMovimiento(
+          'Compra en línea',
+          'Amazon',
+          -120.00,
+          '5 Feb 2026',
+          Icons.shopping_bag,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMovimiento(
+    String titulo,
+    String descripcion,
+    double monto,
+    String fecha,
+    IconData icono,
+  ) {
+    final isPositive = monto > 0;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  titulo,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  descripcion,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  fecha,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${isPositive ? '+' : '-'}\$${monto.abs().toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: isPositive ? Colors.green : Colors.red,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInformacionTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildCardDetailsCard(),
+      ],
+    );
+  }
+
+  Widget _buildCardDetailsCard() {
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Detalles de la Tarjeta',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildDetailRow('Número de Tarjeta', widget.card.numeroCuenta),
+            const Divider(),
+            _buildDetailRow('Titular', widget.card.nombreTitular ?? 'N/A'),
+            if (widget.card.fechaVencimiento != null) ...[
+              const Divider(),
+              _buildDetailRow(
+                'Fecha de Vencimiento',
+                widget.card.fechaVencimiento!,
+              ),
+            ],
+            const Divider(),
+            _buildDetailRow('Moneda', widget.card.moneda),
+            const Divider(),
+            _buildDetailRow('Estado', widget.card.activa ? 'Activa' : 'Inactiva'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEstadoTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Estado de cuenta',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Saldo disponible',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      '\$${widget.card.saldo.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    Text(
+                      'Crédito disponible',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      '\$5,000.00',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    Text(
+                      'Límite de crédito',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      '\$10,000.00',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    Text(
+                      'Porcentaje utilizado',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      '50%',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUserDataRow(
+    String label,
+    String value, {
+    bool isHighlight = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: AppTheme.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: isHighlight ? AppTheme.primaryColor : AppTheme.textPrimary,
+          ),
+        ),
+      ],
     );
   }
 
