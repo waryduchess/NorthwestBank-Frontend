@@ -4,25 +4,34 @@ import '../theme/app_theme.dart';
 class StartScreen extends StatelessWidget {
   const StartScreen({super.key});
 
-@override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment:
+                MainAxisAlignment.spaceBetween, // ✅ separa arriba y abajo
+            children: [
+              // Logo arriba
+              
+            Expanded(
+                child: Center(
+                child: Image.asset(
                   'assets/images/logo.png',
                   width: 200,
                   height: 200,
                 ),
-                
-                
-                const SizedBox(height: 16),
-                SizedBox(
+                ),
+            ),
+
+              
+
+              // Botón abajo
+              Padding(
+                padding: const EdgeInsets.only(bottom: 40),
+                child: SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
@@ -35,9 +44,8 @@ class StartScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
