@@ -3,6 +3,7 @@ import '../models/card_model.dart';
 import '../services/card_service.dart';
 import '../theme/app_theme.dart';
 import 'card_detail_screen.dart';
+import 'create_card_screen.dart';
 
 class CardsGalleryScreen extends StatelessWidget {
   const CardsGalleryScreen({super.key});
@@ -12,6 +13,16 @@ class CardsGalleryScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mis tarjetas'),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const CreateCardScreen()),
+          );
+        },
+        child: const Icon(Icons.add),
+        backgroundColor: AppTheme.primaryColor,
       ),
       body: FutureBuilder<List<CardModel>>(
         future: CardService.getUserCards(),

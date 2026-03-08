@@ -16,8 +16,8 @@ class CardDetailScreen extends StatefulWidget {
 
 class _CardDetailScreenState extends State<CardDetailScreen> {
   String activeTab = 'movimientos'; // movimientos, informacion, estado
-
-  @override
+  bool _showCVC = false;
+  bool _showNIP = false;
   Widget build(BuildContext context) {
     var isMobile = MediaQuery.of(context).size.width < 600;
 
@@ -41,12 +41,12 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Tarjeta grande
-                _buildCardWidget(),
-                const SizedBox(height: 24),
-
                 // Datos del usuario
                 _buildUserDataCard(),
+                const SizedBox(height: 24),
+
+                // Tarjeta grande
+                _buildCardWidget(),
               ],
             ),
           ),
@@ -458,6 +458,18 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
               ),
             ],
             const Divider(),
+            _buildDetailRowWithToggle('CVC', _showCVC ? '123' : '***', () {
+              setState(() {
+                _showCVC = !_showCVC;
+              });
+            }),
+            const Divider(),
+            _buildDetailRowWithToggle('NIP', _showNIP ? '1234' : '****', () {
+              setState(() {
+                _showNIP = !_showNIP;
+              });
+            }),
+            const Divider(),
             _buildDetailRow('Moneda', widget.card.moneda),
             const Divider(),
             _buildDetailRow('Estado', widget.card.activa ? 'Activa' : 'Inactiva'),
@@ -626,6 +638,44 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
               fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRowWithToggle(String label, String value, VoidCallback onToggle) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+          Row(
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              IconButton(
+                icon: Icon(
+                  value.contains('*') ? Icons.visibility_off : Icons.visibility,
+                  size: 20,
+                  color: AppTheme.primaryColor,
+                ),
+                onPressed: onToggle,
+              ),
+            ],
           ),
         ],
       ),
