@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiService {
   //registro de usuarios
-  //  Cambia esto por la IP de tu máquina (no uses localhost)
-  static const String baseUrl = 'http://192.168.49.158:3000/api';
+  //  Cambia esto por la IP de tu máquina (cambiala en el .env tu ip)
+  static String get baseUrl => dotenv.env['API_URL']!;
+  //en dado caso con no fucione con la ip del .env  comenta el de arriba y descomenta la de abajo
+  //static String get baseUrl => dotenv.env['API_URL'] ?? 'http://localhost:3000/api';
 
   static Future<Map<String, dynamic>> register({
     required String nombre,

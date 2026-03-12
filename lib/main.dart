@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/start_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/create_account_screen.dart';
@@ -11,7 +12,8 @@ import 'screens/notifications_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/cards_gallery_screen.dart';
 
-void main() {
+void main() async  {
+  await dotenv.load(fileName: '.env');
   runApp(const NorthwestBankApp());
 }
 
