@@ -90,201 +90,183 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   }
 
   Widget _buildStep1() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              'Datos personales',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Datos personales',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
             ),
-            SizedBox(height: 4),
-            Text(
-              'Paso 1 de 3',
-              style: TextStyle(color: AppTheme.textSecondary),
-            ),
-          ],
-        ),
-        Column(
-          children: [
-            TextField(
-              controller: _nombreController,
-              decoration: const InputDecoration(
-                labelText: 'Nombre(s)',
-                prefixIcon: Icon(Icons.person_rounded),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _apellidoPaternoController,
-              decoration: const InputDecoration(
-                labelText: 'Apellido paterno',
-                prefixIcon: Icon(Icons.person_rounded),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _apellidoMaternoController,
-              decoration: const InputDecoration(
-                labelText: 'Apellido materno',
-                prefixIcon: Icon(Icons.person_rounded),
-              ),
-            ),
-          ],
-        ),
-        _buildButtons(
-          primary: ElevatedButton(
-            onPressed: _nextPage,
-            child: const Text('Siguiente', style: TextStyle(fontSize: 16)),
           ),
-        ),
-      ],
+          const SizedBox(height: 4),
+          const Text(
+            'Paso 1 de 3',
+            style: TextStyle(color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: _nombreController,
+            decoration: const InputDecoration(
+              labelText: 'Nombre(s)',
+              prefixIcon: Icon(Icons.person_rounded),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _apellidoPaternoController,
+            decoration: const InputDecoration(
+              labelText: 'Apellido paterno',
+              prefixIcon: Icon(Icons.person_rounded),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _apellidoMaternoController,
+            decoration: const InputDecoration(
+              labelText: 'Apellido materno',
+              prefixIcon: Icon(Icons.person_rounded),
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildButtons(
+            primary: ElevatedButton(
+              onPressed: _nextPage,
+              child: const Text('Siguiente', style: TextStyle(fontSize: 16)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildStep2() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              'Datos de contacto',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Datos de contacto',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
             ),
-            SizedBox(height: 4),
-            Text(
-              'Paso 2 de 3',
-              style: TextStyle(color: AppTheme.textSecondary),
-            ),
-          ],
-        ),
-        Column(
-          children: [
-            TextField(
-              controller: _telefonoController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Teléfono',
-                prefixIcon: Icon(Icons.phone_rounded),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _correoController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'Correo electrónico',
-                prefixIcon: Icon(Icons.email_rounded),
-              ),
-            ),
-          ],
-        ),
-        _buildButtons(
-          secondary: OutlinedButton(
-            onPressed: _prevPage,
-            child: const Text('Atrás', style: TextStyle(fontSize: 16)),
           ),
-          primary: ElevatedButton(
-            onPressed: _nextPage,
-            child: const Text('Siguiente', style: TextStyle(fontSize: 16)),
+          const SizedBox(height: 4),
+          const Text(
+            'Paso 2 de 3',
+            style: TextStyle(color: AppTheme.textSecondary),
           ),
-        ),
-      ],
+          const SizedBox(height: 24),
+          TextField(
+            controller: _telefonoController,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+              labelText: 'Teléfono',
+              prefixIcon: Icon(Icons.phone_rounded),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _correoController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'Correo electrónico',
+              prefixIcon: Icon(Icons.email_rounded),
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildButtons(
+            secondary: OutlinedButton(
+              onPressed: _prevPage,
+              child: const Text('Atrás', style: TextStyle(fontSize: 16)),
+            ),
+            primary: ElevatedButton(
+              onPressed: _nextPage,
+              child: const Text('Siguiente', style: TextStyle(fontSize: 16)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildStep3() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              'Crea tu contraseña',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Crea tu contraseña',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
             ),
-            SizedBox(height: 4),
-            Text(
-              'Paso 3 de 3',
-              style: TextStyle(color: AppTheme.textSecondary),
-            ),
-          ],
-        ),
-        Column(
-          children: [
-            TextField(
-              controller: _contrasenaController,
-              obscureText: _obscurePassword,
-              decoration: InputDecoration(
-                labelText: 'Contraseña',
-                prefixIcon: const Icon(Icons.lock_rounded),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                  ),
-                  onPressed: () =>
-                      setState(() => _obscurePassword = !_obscurePassword),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _confirmarContrasenaController,
-              obscureText: _obscureConfirm,
-              decoration: InputDecoration(
-                labelText: 'Confirmar contraseña',
-                prefixIcon: const Icon(Icons.lock_rounded),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscureConfirm ? Icons.visibility_off : Icons.visibility,
-                  ),
-                  onPressed: () =>
-                      setState(() => _obscureConfirm = !_obscureConfirm),
-                ),
-              ),
-            ),
-          ],
-        ),
-        _buildButtons(
-          secondary: OutlinedButton(
-            onPressed: _prevPage,
-            child: const Text('Atrás', style: TextStyle(fontSize: 16)),
           ),
-          primary: ElevatedButton(
-            onPressed: _isLoading ? null : _handleRegister,
-            child: _isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Text('Registrar', style: TextStyle(fontSize: 16)),
+          const SizedBox(height: 4),
+          const Text(
+            'Paso 3 de 3',
+            style: TextStyle(color: AppTheme.textSecondary),
           ),
-        ),
-      ],
+          const SizedBox(height: 24),
+          TextField(
+            controller: _contrasenaController,
+            obscureText: _obscurePassword,
+            decoration: InputDecoration(
+              labelText: 'Contraseña',
+              prefixIcon: const Icon(Icons.lock_rounded),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                ),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _confirmarContrasenaController,
+            obscureText: _obscureConfirm,
+            decoration: InputDecoration(
+              labelText: 'Confirmar contraseña',
+              prefixIcon: const Icon(Icons.lock_rounded),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                ),
+                onPressed: () =>
+                    setState(() => _obscureConfirm = !_obscureConfirm),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildButtons(
+            secondary: OutlinedButton(
+              onPressed: _prevPage,
+              child: const Text('Atrás', style: TextStyle(fontSize: 16)),
+            ),
+            primary: ElevatedButton(
+              onPressed: _isLoading ? null : _handleRegister,
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Registrar', style: TextStyle(fontSize: 16)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -325,6 +307,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),

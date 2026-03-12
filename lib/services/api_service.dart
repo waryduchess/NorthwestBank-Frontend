@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
   //registro de usuarios
   //  Cambia esto por la IP de tu máquina (no uses localhost)
-  static const String baseUrl = 'http://192.168.0.15:3000/api';
+  static const String baseUrl = 'http://192.168.49.158:3000/api';
 
   static Future<Map<String, dynamic>> register({
     required String nombre,
