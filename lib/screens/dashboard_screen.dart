@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../models/card_model.dart';
 import '../services/card_service.dart';
@@ -15,11 +16,20 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   late Future<List<CardModel>> _cardsFuture;
+  String _userName = '';
 
   @override
   void initState() {
     super.initState();
     _cardsFuture = CardService.getUserCards();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userName = prefs.getString('user_name') ?? '';
+    });
   }
 
   void _openCardDetail(BuildContext context, CardModel card) {
@@ -216,9 +226,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Hola, Erik',
-                  style: TextStyle(
+                Text(
+                  'Hola, $_userName',
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.textPrimary,

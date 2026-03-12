@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
 class CreateAccountScreen extends StatefulWidget {
   const CreateAccountScreen({super.key});
@@ -22,6 +23,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -104,7 +106,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
               ),
             ),
             SizedBox(height: 4),
-            Text('Paso 1 de 3', style: TextStyle(color: AppTheme.textSecondary)),
+            Text(
+              'Paso 1 de 3',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
           ],
         ),
         Column(
@@ -161,7 +166,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
               ),
             ),
             SizedBox(height: 4),
-            Text('Paso 2 de 3', style: TextStyle(color: AppTheme.textSecondary)),
+            Text(
+              'Paso 2 de 3',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
           ],
         ),
         Column(
@@ -216,7 +224,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
               ),
             ),
             SizedBox(height: 4),
-            Text('Paso 3 de 3', style: TextStyle(color: AppTheme.textSecondary)),
+            Text(
+              'Paso 3 de 3',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
           ],
         ),
         Column(
@@ -231,7 +242,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   icon: Icon(
                     _obscurePassword ? Icons.visibility_off : Icons.visibility,
                   ),
-                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
             ),
@@ -246,7 +258,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   icon: Icon(
                     _obscureConfirm ? Icons.visibility_off : Icons.visibility,
                   ),
-                  onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                  onPressed: () =>
+                      setState(() => _obscureConfirm = !_obscureConfirm),
                 ),
               ),
             ),
@@ -258,12 +271,55 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
             child: const Text('Atrás', style: TextStyle(fontSize: 16)),
           ),
           primary: ElevatedButton(
-            onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
-            child: const Text('Registrar', style: TextStyle(fontSize: 16)),
+            onPressed: _isLoading ? null : _handleRegister,
+            child: _isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text('Registrar', style: TextStyle(fontSize: 16)),
           ),
         ),
       ],
     );
+  }
+
+  Future<void> _handleRegister() async {
+    if (_contrasenaController.text != _confirmarContrasenaController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Las contraseñas no coinciden')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    
+
+    final result = await ApiService.register(
+      nombre: _nombreController.text.trim(),
+      apellidoPaterno: _apellidoPaternoController.text.trim(),
+      apellidoMaterno: _apellidoMaternoController.text.trim(),
+      telefono: _telefonoController.text.trim(),
+      email: _correoController.text.trim(),
+      password: _contrasenaController.text,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (result['success']) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('¡Cuenta creada exitosamente!')),
+      );
+      Navigator.pushReplacementNamed(context, '/login');
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result['message'])));
+    }
   }
 
   @override
@@ -275,18 +331,11 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           child: Column(
             children: [
               const SizedBox(height: 24),
-              Image.asset(
-                'assets/images/logo.png',
-                width: 80,
-                height: 80,
-              ),
+              Image.asset('assets/images/logo.png', width: 80, height: 80),
               const SizedBox(height: 8),
               const Text(
                 'Crea tu cuenta',
-                style: TextStyle(
-                  fontSize: 28,
-                  color: AppTheme.textSecondary,
-                ),
+                style: TextStyle(fontSize: 28, color: AppTheme.textSecondary),
               ),
               const SizedBox(height: 16),
               _buildStepIndicator(),
@@ -299,9 +348,18 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     setState(() => _currentPage = page);
                   },
                   children: [
-                    Padding(padding: const EdgeInsets.only(bottom: 16), child: _buildStep1()),
-                    Padding(padding: const EdgeInsets.only(bottom: 16), child: _buildStep2()),
-                    Padding(padding: const EdgeInsets.only(bottom: 16), child: _buildStep3()),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _buildStep1(),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _buildStep2(),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _buildStep3(),
+                    ),
                   ],
                 ),
               ),
