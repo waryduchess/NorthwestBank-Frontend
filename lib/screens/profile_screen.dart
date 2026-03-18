@@ -23,10 +23,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadSavedPhoto() async {
+    // Carga inmediata desde caché local
     final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString('foto_url');
-    if (saved != null && mounted) {
-      setState(() => _profileImageUrl = saved);
+    final cached = prefs.getString('foto_url');
+    if (cached != null && mounted) {
+      setState(() => _profileImageUrl = cached);
+    }
+
+    // Refresca desde la API para tener la foto más actualizada
+    final result = await ApiService.getProfile();
+    if (result['success'] == true && mounted) {
+      setState(() => _profileImageUrl = result['data']['foto_url']);
     }
   }
 
