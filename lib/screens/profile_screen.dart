@@ -15,25 +15,42 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   String? _profileImageUrl;
   bool _uploadingPhoto = false;
+  String _userName = '';
+  String _userEmail = '';
+  String _userPhone = '';
 
   @override
   void initState() {
     super.initState();
-    _loadSavedPhoto();
+    _loadProfileData();
   }
 
-  Future<void> _loadSavedPhoto() async {
+  Future<void> _loadProfileData() async {
     // Carga inmediata desde caché local
     final prefs = await SharedPreferences.getInstance();
     final cached = prefs.getString('foto_url');
-    if (cached != null && mounted) {
-      setState(() => _profileImageUrl = cached);
+    final cachedName = prefs.getString('user_name');
+    if (mounted) {
+      setState(() {
+        if (cached != null) _profileImageUrl = cached;
+        if (cachedName != null) _userName = cachedName;
+      });
     }
 
-    // Refresca desde la API para tener la foto más actualizada
+    // Refresca desde la API para tener los datos más actualizados
     final result = await ApiService.getProfile();
     if (result['success'] == true && mounted) {
-      setState(() => _profileImageUrl = result['data']['foto_url']);
+      final data = result['data'];
+      final nombre = data['nombre'] ?? '';
+      final apellidoPaterno = data['apellido_paterno'] ?? '';
+      final apellidoMaterno = data['apellido_materno'] ?? '';
+      final fullName = '$nombre $apellidoPaterno $apellidoMaterno'.trim();
+      setState(() {
+        _profileImageUrl = data['foto_url'];
+        _userName = fullName;
+        _userEmail = data['email'] ?? '';
+        _userPhone = data['telefono'] ?? '';
+      });
     }
   }
 
@@ -150,9 +167,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ? NetworkImage(_profileImageUrl!)
                             : null,
                         child: _profileImageUrl == null
-                            ? const Text(
-                                'EG',
-                                style: TextStyle(
+                            ? Text(
+                                _userName.isNotEmpty
+                                    ? _userName.trim().split(' ').take(2).map((w) => w[0].toUpperCase()).join()
+                                    : '?',
+                                style: const TextStyle(
                                   fontSize: 32,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
@@ -182,27 +201,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            TextButton.icon(
-              onPressed: _showPhotoOptions,
-              icon: const Icon(Icons.edit, size: 14, color: AppTheme.textSecondary),
-              label: const Text(
-                'Editar foto de perfil',
-                style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-              ),
-            ),
+           ////////////////////
             const SizedBox(height: 4),
-            const Text(
-              'Erik hernandez',
-              style: TextStyle(
+            Text(
+              _userName.isNotEmpty ? _userName : '—',
+              style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textPrimary,
               ),
             ),
-            const Text(
-              'erik.garcia@email.com',
-              style: TextStyle(color: AppTheme.textSecondary),
+            Text(
+              _userEmail.isNotEmpty ? _userEmail : '—',
+              style: const TextStyle(color: AppTheme.textSecondary),
             ),
             const SizedBox(height: 24),
 
@@ -217,7 +228,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onTap: () {
                       showDialog(
                         context: context,
-                        builder: (context) => const _PersonalDataDialog(),
+                        builder: (context) => _PersonalDataDialog(
+                          userName: _userName,
+                          userEmail: _userEmail,
+                          userPhone: _userPhone,
+                        ),
                       );
                     },
                   ),
@@ -322,15 +337,30 @@ class _ProfileOption extends StatelessWidget {
 }
 
 class _PersonalDataDialog extends StatefulWidget {
-  const _PersonalDataDialog();
+  final String userName;
+  final String userEmail;
+  final String userPhone;
+
+  const _PersonalDataDialog({
+    required this.userName,
+    required this.userEmail,
+    required this.userPhone,
+  });
 
   @override
   State<_PersonalDataDialog> createState() => _PersonalDataDialogState();
 }
 
 class _PersonalDataDialogState extends State<_PersonalDataDialog> {
-  final _emailController = TextEditingController(text: 'erik.garcia@email.com');
-  final _phoneController = TextEditingController(text: '+52 123 456 7890');
+  late final TextEditingController _emailController;
+  late final TextEditingController _phoneController;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController(text: widget.userEmail);
+    _phoneController = TextEditingController(text: widget.userPhone);
+  }
 
   bool _isEditingEmail = false;
   bool _isEditingPhone = false;
@@ -364,9 +394,9 @@ class _PersonalDataDialogState extends State<_PersonalDataDialog> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey[300]!),
               ),
-              child: const Text(
-                'Erik Hernandez',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+              child: Text(
+                widget.userName.isNotEmpty ? widget.userName : '—',
+                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 16),
               ),
             ),
             const SizedBox(height: 16),
