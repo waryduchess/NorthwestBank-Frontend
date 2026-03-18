@@ -65,12 +65,19 @@ class ApiService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
-      // Guardar el token y nombre localmente
+      // Guardar el token y datos del usuario localmente
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('jwt_token', data['token']);
       final usuario = data['usuario'];
-      if (usuario != null && usuario['nombre'] != null) {
-        await prefs.setString('user_name', usuario['nombre']);
+      if (usuario != null) {
+        if (usuario['nombre'] != null) {
+          await prefs.setString('user_name', usuario['nombre']);
+        }
+        if (usuario['foto_url'] != null) {
+          await prefs.setString('foto_url', usuario['foto_url']);
+        } else {
+          await prefs.remove('foto_url');
+        }
       }
       return {'success': true, 'data': data};
     } else {
@@ -98,6 +105,8 @@ class ApiService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('foto_url', data['foto_url']);
         return {'success': true, 'foto_url': data['foto_url']};
       } else {
         return {'success': false, 'message': data['mensaje'] ?? 'Error al subir la foto'};

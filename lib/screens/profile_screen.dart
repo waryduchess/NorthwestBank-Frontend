@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 
@@ -14,6 +15,20 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   String? _profileImageUrl;
   bool _uploadingPhoto = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedPhoto();
+  }
+
+  Future<void> _loadSavedPhoto() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('foto_url');
+    if (saved != null && mounted) {
+      setState(() => _profileImageUrl = saved);
+    }
+  }
 
   Future<void> _pickAndUploadImage(ImageSource source) async {
     Navigator.pop(context); // Cierra el bottom sheet
