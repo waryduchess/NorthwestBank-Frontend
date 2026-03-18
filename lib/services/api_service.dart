@@ -88,6 +88,33 @@ class ApiService {
   }
 }
 
+  static Future<Map<String, dynamic>> getProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/usuarios/perfil'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        if (data['foto_url'] != null) {
+          await prefs.setString('foto_url', data['foto_url']);
+        } else {
+          await prefs.remove('foto_url');
+        }
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'message': data['mensaje'] ?? 'Error al obtener perfil'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión. Verifica tu red.'};
+    }
+  }
+
   static Future<Map<String, dynamic>> uploadProfilePhoto(File imageFile) async {
     try {
       final prefs = await SharedPreferences.getInstance();
