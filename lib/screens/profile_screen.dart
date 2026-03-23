@@ -1,8 +1,143 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  String? _profileImageUrl;
+  bool _uploadingPhoto = false;
+  String _userName = '';
+  String _userEmail = '';
+  String _userPhone = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileData();
+  }
+
+  Future<void> _loadProfileData() async {
+    // Carga inmediata desde caché local
+    final prefs = await SharedPreferences.getInstance();
+    final cached = prefs.getString('foto_url');
+    final cachedName = prefs.getString('user_name');
+    if (mounted) {
+      setState(() {
+        if (cached != null) _profileImageUrl = cached;
+        if (cachedName != null) _userName = cachedName;
+      });
+    }
+
+    // Refresca desde la API para tener los datos más actualizados
+    final result = await ApiService.getProfile();
+    if (result['success'] == true && mounted) {
+      final data = result['data'];
+      final nombre = data['nombre'] ?? '';
+      final apellidoPaterno = data['apellido_paterno'] ?? '';
+      final apellidoMaterno = data['apellido_materno'] ?? '';
+      final fullName = '$nombre $apellidoPaterno $apellidoMaterno'.trim();
+      setState(() {
+        _profileImageUrl = data['foto_url'];
+        _userName = fullName;
+        _userEmail = data['email'] ?? '';
+        _userPhone = data['telefono'] ?? '';
+      });
+    }
+  }
+
+  Future<void> _pickAndUploadImage(ImageSource source) async {
+    Navigator.pop(context); // Cierra el bottom sheet
+
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: source, imageQuality: 85);
+    if (picked == null) return;
+
+    setState(() => _uploadingPhoto = true);
+
+    final result = await ApiService.uploadProfilePhoto(File(picked.path));
+
+    if (!mounted) return;
+    setState(() => _uploadingPhoto = false);
+
+    if (result['success'] == true) {
+      setState(() => _profileImageUrl = result['foto_url']);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Foto actualizada correctamente'),
+          backgroundColor: AppTheme.accentColor,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Error al subir la foto'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
+  }
+
+  void _showPhotoOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Foto de perfil',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => _pickAndUploadImage(ImageSource.gallery),
+              icon: const Icon(Icons.photo_library_outlined),
+              label: const Text('Seleccionar imagen'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => _pickAndUploadImage(ImageSource.camera),
+              icon: const Icon(Icons.camera_alt_outlined),
+              label: const Text('Tomar foto'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                side: const BorderSide(color: AppTheme.primaryColor),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -12,31 +147,73 @@ class ProfileScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Avatar y nombre
-            const CircleAvatar(
-              radius: 50,
-              backgroundColor: AppTheme.primaryColor,
-              child: Text(
-                'EG',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+            // Avatar con botón de editar
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                _uploadingPhoto
+                    ? const SizedBox(
+                        width: 100,
+                        height: 100,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          color: AppTheme.primaryColor,
+                        ),
+                      )
+                    : CircleAvatar(
+                        radius: 50,
+                        backgroundColor: AppTheme.primaryColor,
+                        backgroundImage: _profileImageUrl != null
+                            ? NetworkImage(_profileImageUrl!)
+                            : null,
+                        child: _profileImageUrl == null
+                            ? Text(
+                                _userName.isNotEmpty
+                                    ? _userName.trim().split(' ').take(2).map((w) => w[0].toUpperCase()).join()
+                                    : '?',
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : null,
+                      ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onTap: _showPhotoOptions,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-            const SizedBox(height: 12),
-            const Text(
-              'Erik hernandez',
-              style: TextStyle(
+           ////////////////////
+            const SizedBox(height: 4),
+            Text(
+              _userName.isNotEmpty ? _userName : '—',
+              style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textPrimary,
               ),
             ),
-            const Text(
-              'erik.garcia@email.com',
-              style: TextStyle(color: AppTheme.textSecondary),
+            Text(
+              _userEmail.isNotEmpty ? _userEmail : '—',
+              style: const TextStyle(color: AppTheme.textSecondary),
             ),
             const SizedBox(height: 24),
 
@@ -51,7 +228,11 @@ class ProfileScreen extends StatelessWidget {
                     onTap: () {
                       showDialog(
                         context: context,
-                        builder: (context) => const _PersonalDataDialog(),
+                        builder: (context) => _PersonalDataDialog(
+                          userName: _userName,
+                          userEmail: _userEmail,
+                          userPhone: _userPhone,
+                        ),
                       );
                     },
                   ),
@@ -156,15 +337,30 @@ class _ProfileOption extends StatelessWidget {
 }
 
 class _PersonalDataDialog extends StatefulWidget {
-  const _PersonalDataDialog();
+  final String userName;
+  final String userEmail;
+  final String userPhone;
+
+  const _PersonalDataDialog({
+    required this.userName,
+    required this.userEmail,
+    required this.userPhone,
+  });
 
   @override
   State<_PersonalDataDialog> createState() => _PersonalDataDialogState();
 }
 
 class _PersonalDataDialogState extends State<_PersonalDataDialog> {
-  final _emailController = TextEditingController(text: 'erik.garcia@email.com');
-  final _phoneController = TextEditingController(text: '+52 123 456 7890');
+  late final TextEditingController _emailController;
+  late final TextEditingController _phoneController;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController(text: widget.userEmail);
+    _phoneController = TextEditingController(text: widget.userPhone);
+  }
 
   bool _isEditingEmail = false;
   bool _isEditingPhone = false;
@@ -198,9 +394,9 @@ class _PersonalDataDialogState extends State<_PersonalDataDialog> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey[300]!),
               ),
-              child: const Text(
-                'Erik Hernandez',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+              child: Text(
+                widget.userName.isNotEmpty ? widget.userName : '—',
+                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 16),
               ),
             ),
             const SizedBox(height: 16),
@@ -321,7 +517,6 @@ class _PersonalDataDialogState extends State<_PersonalDataDialog> {
         ),
         ElevatedButton(
           onPressed: () {
-            // Guardar cambios
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
