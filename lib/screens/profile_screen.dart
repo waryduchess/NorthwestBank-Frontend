@@ -256,7 +256,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.notifications_outlined,
                     title: 'Notificaciones',
                     subtitle: 'Alertas push y email',
-                    onTap: () {},
+                    onTap: () => Navigator.pushNamed(context, '/notifications'),
                   ),
                 ],
               ),
@@ -269,7 +269,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.help_outline,
                     title: 'Ayuda y soporte',
                     subtitle: 'Preguntas frecuentes',
-                    onTap: () {},
+                    onTap: () => Navigator.pushNamed(context, '/faq'),
                   ),
                   const Divider(height: 1),
                   _ProfileOption(
