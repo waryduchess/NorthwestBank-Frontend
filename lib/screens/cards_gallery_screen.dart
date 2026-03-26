@@ -177,4 +177,3 @@ class CardsGalleryScreen extends StatelessWidget {
     );
   }
 }
-
