@@ -279,7 +279,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/images/tarjetitas.png'),
+            image: AssetImage('assets/images/tarjeta_tres.png'),
             opacity: 0.08,
             fit: BoxFit.cover,
           ),

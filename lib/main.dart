@@ -11,6 +11,7 @@ import 'screens/payments_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/cards_gallery_screen.dart';
+import 'screens/faq_screen.dart';
 
 void main() async  {
   await dotenv.load(fileName: '.env');
@@ -38,6 +39,7 @@ class NorthwestBankApp extends StatelessWidget {
         '/payments': (_) => const PaymentsScreen(),
         '/notifications': (_) => const NotificationsScreen(),
         '/profile': (_) => const ProfileScreen(),
+        '/faq': (_) => const FaqScreen(),
       },
     );
   }
