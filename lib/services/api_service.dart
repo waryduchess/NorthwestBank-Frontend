@@ -115,6 +115,65 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> getAccounts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.get(
+        Uri.parse('$baseUrl/cuentas'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data};
+      } else {
+        return {
+          'success': false,
+          'message': '${data['mensaje'] ?? 'Error al obtener cuentas'} (código ${response.statusCode})',
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> registerCard({
+    required int cuentaId,
+    required int tipoTarjetaId,
+    required String numeroTarjeta,
+    required String cvv,
+    required String fechaExpiracion,
+    required String nip,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.post(
+        Uri.parse('$baseUrl/tarjetas'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'cuenta_id': cuentaId,
+          'tipo_tarjeta_id': tipoTarjetaId,
+          'numero_tarjeta': numeroTarjeta,
+          'cvv': cvv,
+          'fecha_expiracion': fechaExpiracion,
+          'nip': nip,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 201) {
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'message': data['mensaje'] ?? 'Error al registrar tarjeta'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión. Verifica tu red.'};
+    }
+  }
+
   static Future<Map<String, dynamic>> uploadProfilePhoto(File imageFile) async {
     try {
       final prefs = await SharedPreferences.getInstance();
