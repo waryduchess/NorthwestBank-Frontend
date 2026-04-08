@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/card_model.dart';
+import '../services/biometric_service.dart';
 import '../theme/app_theme.dart';
 
 class CardDetailScreen extends StatefulWidget {
@@ -15,9 +17,48 @@ class CardDetailScreen extends StatefulWidget {
 }
 
 class _CardDetailScreenState extends State<CardDetailScreen> {
-  String activeTab = 'movimientos'; // movimientos, informacion, estado
-  bool _showCVC = false;
-  bool _showNIP = false;
+  String activeTab = 'movimientos';
+  bool _showSensitiveData = false;
+  int _timerSeconds = 0;
+  Timer? _countdownTimer;
+  final BiometricService _biometricService = BiometricService();
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _revealSensitiveData() async {
+    final available = await _biometricService.isAvailable();
+    if (!available) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Autenticación biométrica no disponible')),
+      );
+      return;
+    }
+
+    final authenticated = await _biometricService.authenticate();
+    if (!authenticated) return;
+
+    setState(() {
+      _showSensitiveData = true;
+      _timerSeconds = 30;
+    });
+
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _timerSeconds--;
+      });
+      if (_timerSeconds <= 0) {
+        timer.cancel();
+        setState(() {
+          _showSensitiveData = false;
+        });
+      }
+    });
+  }
   Widget build(BuildContext context) {
     var isMobile = MediaQuery.of(context).size.width < 600;
 
@@ -452,23 +493,12 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
             _buildDetailRow('Titular', widget.card.nombreTitular ?? 'N/A'),
             if (widget.card.fechaVencimiento != null) ...[
               const Divider(),
-              _buildDetailRow(
-                'Fecha de Vencimiento',
-                widget.card.fechaVencimiento!,
-              ),
+              _buildDetailRow('Fecha de Vencimiento', widget.card.fechaVencimiento!),
             ],
             const Divider(),
-            _buildDetailRowWithToggle('CVC', _showCVC ? '123' : '***', () {
-              setState(() {
-                _showCVC = !_showCVC;
-              });
-            }),
+            _buildSensitiveRow('CVV', _showSensitiveData ? (widget.card.cvv ?? '***') : '***'),
             const Divider(),
-            _buildDetailRowWithToggle('NIP', _showNIP ? '1234' : '****', () {
-              setState(() {
-                _showNIP = !_showNIP;
-              });
-            }),
+            _buildSensitiveRow('NIP', _showSensitiveData ? (widget.card.nip ?? '****') : '****'),
             const Divider(),
             _buildDetailRow('Moneda', widget.card.moneda),
             const Divider(),
@@ -480,6 +510,12 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
   }
 
   Widget _buildEstadoTab() {
+    final card = widget.card;
+    final esCredito = card.categoria == 'credito';
+    final porcentaje = esCredito && card.limiteCredito != null && card.limiteCredito! > 0
+        ? (card.saldo / card.limiteCredito! * 100).clamp(0.0, 100.0)
+        : 0.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -501,86 +537,61 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Saldo disponible',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppTheme.textSecondary,
-                      ),
+                    Text(
+                      esCredito ? 'Deuda acumulada' : 'Saldo disponible',
+                      style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
                     ),
                     Text(
-                      '\$${widget.card.saldo.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryColor,
-                      ),
+                      '\$${card.saldo.toStringAsFixed(2)} MXN',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
                     ),
                   ],
                 ),
-                const Divider(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text(
-                      'Crédito disponible',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppTheme.textSecondary,
+                if (esCredito) ...[
+                  const Divider(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Crédito disponible', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                      Text(
+                        card.creditoDisponible != null
+                            ? '\$${card.creditoDisponible!.toStringAsFixed(2)} MXN'
+                            : 'Sin límite',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
                       ),
-                    ),
-                    Text(
-                      '\$5,000.00',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryColor,
+                    ],
+                  ),
+                  const Divider(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Límite de crédito', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                      Text(
+                        card.limiteCredito != null
+                            ? '\$${card.limiteCredito!.toStringAsFixed(2)} MXN'
+                            : 'Sin límite',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                       ),
-                    ),
-                  ],
-                ),
-                const Divider(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text(
-                      'Límite de crédito',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                    Text(
-                      '\$10,000.00',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text(
-                      'Porcentaje utilizado',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                    Text(
-                      '50%',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange,
-                      ),
+                    ],
+                  ),
+                  if (card.limiteCredito != null) ...[
+                    const Divider(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Porcentaje utilizado', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                        Text(
+                          '${porcentaje.toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: porcentaje > 80 ? Colors.red : porcentaje > 50 ? Colors.orange : Colors.green,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                ),
+                ],
               ],
             ),
           ),
@@ -644,37 +655,37 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
     );
   }
 
-  Widget _buildDetailRowWithToggle(String label, String value, VoidCallback onToggle) {
+  Widget _buildSensitiveRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppTheme.textSecondary,
-            ),
-          ),
+          Text(label, style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
           Row(
             children: [
               Text(
                 value,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary,
-                ),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
               ),
-              IconButton(
-                icon: Icon(
-                  value.contains('*') ? Icons.visibility_off : Icons.visibility,
-                  size: 20,
-                  color: AppTheme.primaryColor,
+              if (!_showSensitiveData)
+                IconButton(
+                  icon: const Icon(Icons.fingerprint, size: 22, color: AppTheme.primaryColor),
+                  tooltip: 'Autenticar con huella',
+                  onPressed: _revealSensitiveData,
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    '$_timerSeconds s',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: _timerSeconds <= 10 ? Colors.red : Colors.orange,
+                    ),
+                  ),
                 ),
-                onPressed: onToggle,
-              ),
             ],
           ),
         ],

@@ -10,6 +10,13 @@ class CardModel {
   final String? apellidoUsuario;
   final String? fechaVencimiento;
   final String? nombreTitular;
+  final String? categoria;
+  final double? creditoDisponible;
+  final double? limiteCredito;
+  final String? cvv;
+  final String? nip;
+  final int? cuentaId;
+  final String? numeroTarjetaRaw;
 
   CardModel({
     required this.id,
@@ -23,6 +30,13 @@ class CardModel {
     this.apellidoUsuario,
     this.fechaVencimiento,
     this.nombreTitular,
+    this.categoria,
+    this.creditoDisponible,
+    this.limiteCredito,
+    this.cvv,
+    this.nip,
+    this.cuentaId,
+    this.numeroTarjetaRaw,
   });
 
   // Constructor para tarjetas solicitables (inactivas)
@@ -68,16 +82,29 @@ class CardModel {
   // Factory para respuesta real del backend (GET /tarjetas)
   factory CardModel.fromBackend(Map<String, dynamic> json, {String nombreTitular = ''}) {
     final tipo = json['tipo'] as String? ?? '';
+    final rawNumero = json['numero_tarjeta'] as String? ?? '';
     return CardModel(
       id: json['id'].toString(),
       tipoCuenta: tipo,
-      numeroCuenta: _mascarar(json['numero_tarjeta'] as String? ?? ''),
+      numeroCuenta: _mascarar(rawNumero),
       saldo: double.tryParse(json['saldo'].toString()) ?? 0.0,
       moneda: 'MXN',
       imagenTarjeta: imagenParaTipo(tipo),
       activa: json['estado'] == 'activa',
       fechaVencimiento: json['fecha_expiracion'] as String?,
       nombreTitular: nombreTitular,
+      nombreUsuario: nombreTitular,
+      categoria: json['categoria'] as String?,
+      creditoDisponible: json['credito_disponible'] != null
+          ? double.tryParse(json['credito_disponible'].toString())
+          : null,
+      limiteCredito: json['limite_credito'] != null
+          ? double.tryParse(json['limite_credito'].toString())
+          : null,
+      cvv: json['cvv'] as String?,
+      nip: json['nip'] as String?,
+      cuentaId: json['cuenta_id'] as int?,
+      numeroTarjetaRaw: rawNumero,
     );
   }
 

@@ -174,6 +174,72 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> transfer({
+    required int cuentaOrigenId,
+    required String numeroCuentaDestino,
+    required double monto,
+    String? descripcion,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.post(
+        Uri.parse('$baseUrl/transacciones/transferir'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'cuenta_origen_id': cuentaOrigenId,
+          'numero_cuenta_destino': numeroCuentaDestino,
+          'monto': monto,
+          if (descripcion != null && descripcion.isNotEmpty) 'descripcion': descripcion,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'message': data['mensaje'] ?? 'Error al realizar transferencia'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión. Verifica tu red.'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> transferByCard({
+    required int cuentaOrigenId,
+    required String numeroTarjetaDestino,
+    required double monto,
+    String? descripcion,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.post(
+        Uri.parse('$baseUrl/transacciones/transferir'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'cuenta_origen_id': cuentaOrigenId,
+          'numero_tarjeta_destino': numeroTarjetaDestino,
+          'monto': monto,
+          if (descripcion != null && descripcion.isNotEmpty) 'descripcion': descripcion,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'message': data['mensaje'] ?? 'Error al realizar transferencia'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión. Verifica tu red.'};
+    }
+  }
+
   static Future<Map<String, dynamic>> getCards() async {
     try {
       final prefs = await SharedPreferences.getInstance();

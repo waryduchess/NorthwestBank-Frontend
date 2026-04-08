@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/bank_model.dart';
 import '../models/beneficiary_model.dart';
+import '../models/card_model.dart';
+import '../services/api_service.dart';
+import '../services/card_service.dart';
 import '../services/transfer_service.dart';
 import '../theme/app_theme.dart';
 
@@ -12,11 +15,20 @@ class TransfersScreen extends StatefulWidget {
 }
 
 class _TransfersScreenState extends State<TransfersScreen> {
-  String _transferType = 'entre_mis_cuentas'; // entre_mis_cuentas | a_terceros
+  String _transferType = 'entre_mis_cuentas';
 
-  // Entre mis cuentas
-  String _cuentaOrigen = 'ahorro';
-  String _cuentaDestino = 'corriente';
+  // Entre mis cuentas — datos reales
+  List<Map<String, dynamic>> _cuentas = [];
+  Map<String, dynamic>? _cuentaOrigen;
+  Map<String, dynamic>? _cuentaDestino;
+  bool _isLoadingCuentas = false;
+  bool _isProcessing = false;
+
+  // Entre mis tarjetas
+  List<CardModel> _tarjetas = [];
+  CardModel? _tarjetaOrigen;
+  bool _isLoadingTarjetas = false;
+  final TextEditingController _numeroTarjetaDestinoController = TextEditingController();
 
   // A terceros
   List<BankModel> _bancos = [];
@@ -33,6 +45,8 @@ class _TransfersScreenState extends State<TransfersScreen> {
   @override
   void initState() {
     super.initState();
+    _loadCuentas();
+    _loadTarjetas();
     _loadBancosAndBeneficiarios();
   }
 
@@ -42,7 +56,37 @@ class _TransfersScreenState extends State<TransfersScreen> {
     _descripcionController.dispose();
     _nombreBeneficiarioController.dispose();
     _cuentaBeneficiarioController.dispose();
+    _numeroTarjetaDestinoController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCuentas() async {
+    setState(() => _isLoadingCuentas = true);
+    final result = await ApiService.getAccounts();
+    if (mounted && result['success']) {
+      final List<dynamic> data = result['data'];
+      final cuentas = data.map((c) => Map<String, dynamic>.from(c)).toList();
+      setState(() {
+        _cuentas = cuentas;
+        if (cuentas.isNotEmpty) _cuentaOrigen = cuentas[0];
+        if (cuentas.length >= 2) _cuentaDestino = cuentas[1];
+        _isLoadingCuentas = false;
+      });
+    } else {
+      setState(() => _isLoadingCuentas = false);
+    }
+  }
+
+  Future<void> _loadTarjetas() async {
+    setState(() => _isLoadingTarjetas = true);
+    final cards = await CardService.getUserCards();
+    if (mounted) {
+      setState(() {
+        _tarjetas = cards;
+        if (cards.isNotEmpty) _tarjetaOrigen = cards[0];
+        _isLoadingTarjetas = false;
+      });
+    }
   }
 
   Future<void> _loadBancosAndBeneficiarios() async {
@@ -63,6 +107,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
       _transferType = type;
       _montoController.clear();
       _descripcionController.clear();
+      _numeroTarjetaDestinoController.clear();
       _selectedBankId = null;
       _selectedBeneficiaryId = null;
     });
@@ -132,6 +177,9 @@ class _TransfersScreenState extends State<TransfersScreen> {
                     return;
                   }
 
+                  final navigator = Navigator.of(context);
+                  final scaffold = ScaffoldMessenger.of(context);
+
                   final success = await TransferService.addBeneficiary(
                     nombre: _nombreBeneficiarioController.text,
                     numeroCuenta: _cuentaBeneficiarioController.text,
@@ -141,8 +189,8 @@ class _TransfersScreenState extends State<TransfersScreen> {
                   if (!mounted) return;
 
                   if (success) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    navigator.pop();
+                    scaffold.showSnackBar(
                       const SnackBar(
                         content: Text('Beneficiario agregado correctamente'),
                         backgroundColor: AppTheme.accentColor,
@@ -150,7 +198,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
                     );
                     _loadBancosAndBeneficiarios();
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    scaffold.showSnackBar(
                       const SnackBar(
                         content: Text('Error al agregar beneficiario'),
                         backgroundColor: AppTheme.errorColor,
@@ -168,26 +216,116 @@ class _TransfersScreenState extends State<TransfersScreen> {
     );
   }
 
-  void _processTransfer() {
-    if (_montoController.text.isEmpty) {
+  Future<void> _processTransfer() async {
+    final monto = double.tryParse(_montoController.text);
+
+    if (monto == null || monto <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ingresa un monto válido'),
-          backgroundColor: AppTheme.errorColor,
-        ),
+        const SnackBar(content: Text('Ingresa un monto válido'), backgroundColor: AppTheme.errorColor),
       );
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Transferencia realizada correctamente'),
-        backgroundColor: AppTheme.accentColor,
-      ),
-    );
+    if (_transferType == 'entre_mis_cuentas') {
+      if (_cuentaOrigen == null || _cuentaDestino == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Selecciona las cuentas'), backgroundColor: AppTheme.errorColor),
+        );
+        return;
+      }
+      if (_cuentaOrigen!['id'] == _cuentaDestino!['id']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('La cuenta origen y destino no pueden ser la misma'), backgroundColor: AppTheme.errorColor),
+        );
+        return;
+      }
 
-    _montoController.clear();
-    _descripcionController.clear();
+      setState(() => _isProcessing = true);
+      final scaffold = ScaffoldMessenger.of(context);
+
+      final result = await ApiService.transfer(
+        cuentaOrigenId: _cuentaOrigen!['id'],
+        numeroCuentaDestino: _cuentaDestino!['numero_cuenta'],
+        monto: monto,
+        descripcion: _descripcionController.text,
+      );
+
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+
+      if (result['success']) {
+        _montoController.clear();
+        _descripcionController.clear();
+        await _loadCuentas();
+        scaffold.showSnackBar(
+          SnackBar(
+            content: Text('Transferencia realizada · Ref: ${result['data']['referencia']}'),
+            backgroundColor: AppTheme.accentColor,
+          ),
+        );
+      } else {
+        scaffold.showSnackBar(
+          SnackBar(content: Text(result['message'] ?? 'Error'), backgroundColor: AppTheme.errorColor),
+        );
+      }
+    } else if (_transferType == 'entre_mis_tarjetas') {
+      final numeroDestino = _numeroTarjetaDestinoController.text.trim();
+
+      if (_tarjetaOrigen == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Selecciona la tarjeta origen'), backgroundColor: AppTheme.errorColor),
+        );
+        return;
+      }
+      if (numeroDestino.length != 16) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('El número de tarjeta destino debe tener 16 dígitos'), backgroundColor: AppTheme.errorColor),
+        );
+        return;
+      }
+      if (_tarjetaOrigen!.numeroTarjetaRaw == numeroDestino) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('La tarjeta origen y destino no pueden ser la misma'), backgroundColor: AppTheme.errorColor),
+        );
+        return;
+      }
+      if (_tarjetaOrigen!.cuentaId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error: tarjeta sin cuenta asociada'), backgroundColor: AppTheme.errorColor),
+        );
+        return;
+      }
+
+      setState(() => _isProcessing = true);
+      final scaffold = ScaffoldMessenger.of(context);
+
+      final result = await ApiService.transferByCard(
+        cuentaOrigenId: _tarjetaOrigen!.cuentaId!,
+        numeroTarjetaDestino: numeroDestino,
+        monto: monto,
+        descripcion: _descripcionController.text,
+      );
+
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+
+      if (result['success']) {
+        _montoController.clear();
+        _descripcionController.clear();
+        _numeroTarjetaDestinoController.clear();
+        await _loadTarjetas();
+        scaffold.showSnackBar(
+          SnackBar(
+            content: Text('Transferencia realizada · Ref: ${result['data']['referencia']}'),
+            backgroundColor: AppTheme.accentColor,
+          ),
+        );
+      } else {
+        scaffold.showSnackBar(
+          SnackBar(content: Text(result['message'] ?? 'Error'), backgroundColor: AppTheme.errorColor),
+        );
+      }
+    }
   }
 
   @override
@@ -224,6 +362,17 @@ class _TransfersScreenState extends State<TransfersScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: GestureDetector(
+                    onTap: () => _changeTransferType('entre_mis_tarjetas'),
+                    child: _TransferTypeCard(
+                      icon: Icons.credit_card,
+                      label: 'Por tarjeta',
+                      selected: _transferType == 'entre_mis_tarjetas',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: GestureDetector(
                     onTap: () => _changeTransferType('a_terceros'),
                     child: _TransferTypeCard(
                       icon: Icons.people_outline,
@@ -239,6 +388,8 @@ class _TransfersScreenState extends State<TransfersScreen> {
             // Campos dinámicos según tipo de transferencia
             if (_transferType == 'entre_mis_cuentas')
               _buildEntreMiscuentas()
+            else if (_transferType == 'entre_mis_tarjetas')
+              _buildEntreMisTarjetas()
             else
               _buildAlterceros(),
           ],
@@ -248,52 +399,49 @@ class _TransfersScreenState extends State<TransfersScreen> {
   }
 
   Widget _buildEntreMiscuentas() {
+    if (_isLoadingCuentas) {
+      return const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_cuentas.isEmpty) {
+      return const Center(child: Text('No tienes cuentas disponibles'));
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Cuenta origen
-        DropdownButtonFormField<String>(
+        DropdownButtonFormField<Map<String, dynamic>>(
           value: _cuentaOrigen,
           decoration: const InputDecoration(
             labelText: 'Cuenta origen',
             prefixIcon: Icon(Icons.account_balance),
           ),
-          items: const [
-            DropdownMenuItem(
-              value: 'ahorro',
-              child: Text('Ahorro **** 4521 - \$12,450.75'),
+          items: _cuentas.map((c) => DropdownMenuItem(
+            value: c,
+            child: Text(
+              '${c['tipo'].toString().toUpperCase()} · **** ${c['numero_cuenta'].toString().substring(c['numero_cuenta'].toString().length - 4)} · \$${double.parse(c['saldo'].toString()).toStringAsFixed(2)}',
             ),
-            DropdownMenuItem(
-              value: 'corriente',
-              child: Text('Corriente **** 7833 - \$3,200.00'),
-            ),
-          ],
-          onChanged: (value) => setState(() => _cuentaOrigen = value!),
+          )).toList(),
+          onChanged: (value) => setState(() => _cuentaOrigen = value),
         ),
         const SizedBox(height: 16),
 
-        // Cuenta destino
-        DropdownButtonFormField<String>(
+        DropdownButtonFormField<Map<String, dynamic>>(
           value: _cuentaDestino,
           decoration: const InputDecoration(
             labelText: 'Cuenta destino',
-            prefixIcon: Icon(Icons.person_outline),
+            prefixIcon: Icon(Icons.account_balance_wallet),
           ),
-          items: const [
-            DropdownMenuItem(
-              value: 'corriente',
-              child: Text('Corriente **** 7833'),
+          items: _cuentas.map((c) => DropdownMenuItem(
+            value: c,
+            child: Text(
+              '${c['tipo'].toString().toUpperCase()} · **** ${c['numero_cuenta'].toString().substring(c['numero_cuenta'].toString().length - 4)}',
             ),
-            DropdownMenuItem(
-              value: 'ahorro',
-              child: Text('Ahorro **** 4521'),
-            ),
-          ],
-          onChanged: (value) => setState(() => _cuentaDestino = value!),
+          )).toList(),
+          onChanged: (value) => setState(() => _cuentaDestino = value),
         ),
         const SizedBox(height: 16),
 
-        // Monto
         TextField(
           controller: _montoController,
           decoration: const InputDecoration(
@@ -301,11 +449,10 @@ class _TransfersScreenState extends State<TransfersScreen> {
             prefixIcon: Icon(Icons.attach_money),
             hintText: '0.00',
           ),
-          keyboardType: TextInputType.numberWithOptions(decimal: true),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
         ),
         const SizedBox(height: 16),
 
-        // Descripción
         TextField(
           controller: _descripcionController,
           decoration: const InputDecoration(
@@ -316,16 +463,96 @@ class _TransfersScreenState extends State<TransfersScreen> {
         ),
         const SizedBox(height: 32),
 
-        // Botón transferir
         SizedBox(
           width: double.infinity,
           height: 50,
           child: ElevatedButton.icon(
-            onPressed: _processTransfer,
-            icon: const Icon(Icons.send),
-            label: const Text(
-              'Realizar transferencia',
-              style: TextStyle(fontSize: 16),
+            onPressed: _isProcessing ? null : _processTransfer,
+            icon: _isProcessing
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.send),
+            label: Text(
+              _isProcessing ? 'Procesando...' : 'Realizar transferencia',
+              style: const TextStyle(fontSize: 16),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEntreMisTarjetas() {
+    if (_isLoadingTarjetas) {
+      return const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_tarjetas.isEmpty) {
+      return const Center(child: Text('No tienes tarjetas disponibles'));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<CardModel>(
+          value: _tarjetaOrigen,
+          decoration: const InputDecoration(
+            labelText: 'Tarjeta origen',
+            prefixIcon: Icon(Icons.credit_card),
+          ),
+          items: _tarjetas.map((c) => DropdownMenuItem(
+            value: c,
+            child: Text(
+              '${c.tipoCuenta.toUpperCase()} · ${c.numeroCuenta} · \$${c.saldo.toStringAsFixed(2)}',
+            ),
+          )).toList(),
+          onChanged: (value) => setState(() => _tarjetaOrigen = value),
+        ),
+        const SizedBox(height: 16),
+
+        TextField(
+          controller: _numeroTarjetaDestinoController,
+          decoration: const InputDecoration(
+            labelText: 'Número de tarjeta destino',
+            prefixIcon: Icon(Icons.credit_card_outlined),
+            hintText: '16 dígitos',
+          ),
+          keyboardType: TextInputType.number,
+          maxLength: 16,
+        ),
+        const SizedBox(height: 8),
+
+        TextField(
+          controller: _montoController,
+          decoration: const InputDecoration(
+            labelText: 'Monto',
+            prefixIcon: Icon(Icons.attach_money),
+            hintText: '0.00',
+          ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        ),
+        const SizedBox(height: 16),
+
+        TextField(
+          controller: _descripcionController,
+          decoration: const InputDecoration(
+            labelText: 'Descripción (opcional)',
+            prefixIcon: Icon(Icons.notes),
+          ),
+          maxLines: 2,
+        ),
+        const SizedBox(height: 32),
+
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton.icon(
+            onPressed: _isProcessing ? null : _processTransfer,
+            icon: _isProcessing
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.send),
+            label: Text(
+              _isProcessing ? 'Procesando...' : 'Realizar transferencia',
+              style: const TextStyle(fontSize: 16),
             ),
           ),
         ),
@@ -343,29 +570,25 @@ class _TransfersScreenState extends State<TransfersScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Cuenta origen
-              DropdownButtonFormField<String>(
+              DropdownButtonFormField<Map<String, dynamic>>(
                 value: _cuentaOrigen,
                 decoration: const InputDecoration(
                   labelText: 'Cuenta origen',
                   prefixIcon: Icon(Icons.account_balance),
                 ),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'ahorro',
-                    child: Text('Ahorro **** 4521 - \$12,450.75'),
+                items: _cuentas.map((c) => DropdownMenuItem(
+                  value: c,
+                  child: Text(
+                    '${c['tipo'].toString().toUpperCase()} · **** ${c['numero_cuenta'].toString().substring(c['numero_cuenta'].toString().length - 4)} · \$${double.parse(c['saldo'].toString()).toStringAsFixed(2)}',
                   ),
-                  DropdownMenuItem(
-                    value: 'corriente',
-                    child: Text('Corriente **** 7833 - \$3,200.00'),
-                  ),
-                ],
-                onChanged: (value) => setState(() => _cuentaOrigen = value!),
+                )).toList(),
+                onChanged: (value) => setState(() => _cuentaOrigen = value),
               ),
               const SizedBox(height: 16),
 
               // Banco destino
               DropdownButtonFormField<String>(
-                value: _selectedBankId,
+                initialValue: _selectedBankId,
                 decoration: const InputDecoration(
                   labelText: 'Banco destino',
                   prefixIcon: Icon(Icons.business),
@@ -389,7 +612,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _selectedBeneficiaryId,
+                        initialValue: _selectedBeneficiaryId,
                         decoration: const InputDecoration(
                           labelText: 'Beneficiario',
                           prefixIcon: Icon(Icons.person),
