@@ -132,6 +132,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _togglingBiometria = false);
 
     if (result['success'] == true) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('biometria_activa', activar);
+      if (!mounted) return;
       setState(() => _biometriaActiva = activar);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -325,7 +328,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _ProfileOption(
                     icon: Icons.fingerprint,
                     title: 'Biometria',
-                    subtitle: 'Huella dactilar / Face ID',
+                    subtitle: 'Huella dactilar',
                     trailing: _togglingBiometria
                         ? const SizedBox(
                             width: 24,
