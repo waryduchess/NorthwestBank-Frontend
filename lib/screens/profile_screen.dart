@@ -225,13 +225,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.person_outline,
                     title: 'Datos personales',
                     subtitle: 'Nombre, email, telefono',
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => _PersonalDataDialog(
-                          userName: _userName,
-                          userEmail: _userEmail,
-                          userPhone: _userPhone,
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => _EditContactScreen(
+                            userName: _userName,
+                            userEmail: _userEmail,
+                            userPhone: _userPhone,
+                            onSaved: (newEmail, newPhone) {
+                              setState(() {
+                                _userEmail = newEmail;
+                                _userPhone = newPhone;
+                              });
+                            },
+                          ),
                         ),
                       );
                     },
@@ -336,24 +344,27 @@ class _ProfileOption extends StatelessWidget {
   }
 }
 
-class _PersonalDataDialog extends StatefulWidget {
+class _EditContactScreen extends StatefulWidget {
   final String userName;
   final String userEmail;
   final String userPhone;
+  final void Function(String email, String phone) onSaved;
 
-  const _PersonalDataDialog({
+  const _EditContactScreen({
     required this.userName,
     required this.userEmail,
     required this.userPhone,
+    required this.onSaved,
   });
 
   @override
-  State<_PersonalDataDialog> createState() => _PersonalDataDialogState();
+  State<_EditContactScreen> createState() => _EditContactScreenState();
 }
 
-class _PersonalDataDialogState extends State<_PersonalDataDialog> {
+class _EditContactScreenState extends State<_EditContactScreen> {
   late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -362,9 +373,6 @@ class _PersonalDataDialogState extends State<_PersonalDataDialog> {
     _phoneController = TextEditingController(text: widget.userPhone);
   }
 
-  bool _isEditingEmail = false;
-  bool _isEditingPhone = false;
-
   @override
   void dispose() {
     _emailController.dispose();
@@ -372,163 +380,132 @@ class _PersonalDataDialogState extends State<_PersonalDataDialog> {
     super.dispose();
   }
 
+  Future<void> _guardarCambios() async {
+    final email = _emailController.text.trim();
+    final telefono = _phoneController.text.trim();
+
+    if (email.isEmpty || telefono.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El email y el teléfono no pueden estar vacíos'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    final result = await ApiService.updateProfile(email: email, telefono: telefono);
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    if (result['success'] == true) {
+      widget.onSaved(email, telefono);
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Datos actualizados correctamente'),
+          backgroundColor: AppTheme.accentColor,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Error al actualizar'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Datos Personales', style: TextStyle(color: AppTheme.primaryColor)),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Nombre completo',
-              style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Editar contacto')),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Encabezado
+              const Text(
+                'Datos de contacto',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
               ),
-              child: Text(
-                widget.userName.isNotEmpty ? widget.userName : '—',
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+              const SizedBox(height: 4),
+              const Text(
+                'Actualiza tu correo y número de teléfono',
+                style: TextStyle(color: AppTheme.textSecondary),
               ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Email',
-              style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _isEditingEmail
-                      ? TextField(
-                          controller: _emailController,
-                          decoration: const InputDecoration(
-                            hintText: 'Ingresa tu email',
-                            prefixIcon: Icon(Icons.email_outlined, color: AppTheme.primaryColor),
+              const SizedBox(height: 32),
+
+              // Nombre (solo lectura)
+              TextField(
+                readOnly: true,
+                decoration: InputDecoration(
+                  labelText: 'Nombre completo',
+                  prefixIcon: const Icon(Icons.person_rounded),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                ),
+                controller: TextEditingController(text: widget.userName),
+              ),
+              const SizedBox(height: 16),
+
+              // Email
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Correo electrónico',
+                  prefixIcon: Icon(Icons.email_rounded),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Teléfono
+              TextField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Teléfono',
+                  prefixIcon: Icon(Icons.phone_rounded),
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Botón guardar
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isSaving ? null : _guardarCambios,
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
                           ),
-                          keyboardType: TextInputType.emailAddress,
                         )
-                      : Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.email_outlined, color: Colors.grey[600], size: 20),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _emailController.text,
-                                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 16),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
+                      : const Text(
+                          'Guardar cambios',
+                          style: TextStyle(fontSize: 16),
                         ),
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: Icon(
-                    _isEditingEmail ? Icons.check : Icons.edit,
-                    color: _isEditingEmail ? AppTheme.accentColor : AppTheme.primaryColor,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isEditingEmail = !_isEditingEmail;
-                    });
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Teléfono',
-              style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _isEditingPhone
-                      ? TextField(
-                          controller: _phoneController,
-                          decoration: const InputDecoration(
-                            hintText: 'Ingresa tu teléfono',
-                            prefixIcon: Icon(Icons.phone_outlined, color: AppTheme.primaryColor),
-                          ),
-                          keyboardType: TextInputType.phone,
-                        )
-                      : Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.phone_outlined, color: Colors.grey[600], size: 20),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _phoneController.text,
-                                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 16),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: Icon(
-                    _isEditingPhone ? Icons.check : Icons.edit,
-                    color: _isEditingPhone ? AppTheme.accentColor : AppTheme.primaryColor,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isEditingPhone = !_isEditingPhone;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar', style: TextStyle(color: AppTheme.textSecondary)),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Datos actualizados correctamente'),
-                backgroundColor: AppTheme.accentColor,
-              ),
-            );
-          },
-          child: const Text('Guardar'),
-        ),
-      ],
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     );
   }
 }

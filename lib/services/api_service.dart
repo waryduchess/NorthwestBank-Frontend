@@ -259,6 +259,42 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> updateProfile({
+    required String email,
+    required String telefono,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.patch(
+        Uri.parse('$baseUrl/usuarios/perfil'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'email': email,
+          'telefono': telefono,
+        }),
+      );
+
+      Map<String, dynamic> data;
+      try {
+        data = jsonDecode(response.body);
+      } catch (_) {
+        return {'success': false, 'message': 'Respuesta inválida del servidor (${response.statusCode})'};
+      }
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data['usuario']};
+      } else {
+        return {'success': false, 'message': data['mensaje'] ?? 'Error al actualizar perfil (${response.statusCode})'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
   static Future<Map<String, dynamic>> uploadProfilePhoto(File imageFile) async {
     try {
       final prefs = await SharedPreferences.getInstance();
