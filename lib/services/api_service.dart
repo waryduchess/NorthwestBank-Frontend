@@ -259,6 +259,31 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> updateBiometria({
+    required bool activa,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.patch(
+        Uri.parse('$baseUrl/usuarios/biometria'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'activa': activa}),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true};
+      } else {
+        return {'success': false, 'message': data['mensaje'] ?? 'Error al actualizar biometría'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión. Verifica tu red.'};
+    }
+  }
+
   static Future<Map<String, dynamic>> updatePassword({
     required String passwordActual,
     required String passwordNueva,

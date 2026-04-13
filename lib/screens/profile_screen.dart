@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import '../services/biometric_service.dart';
 import '../theme/app_theme.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -18,6 +19,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _userName = '';
   String _userEmail = '';
   String _userPhone = '';
+  bool _biometriaActiva = false;
+  bool _togglingBiometria = false;
+  final _biometricService = BiometricService();
 
   @override
   void initState() {
@@ -45,11 +49,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final apellidoPaterno = data['apellido_paterno'] ?? '';
       final apellidoMaterno = data['apellido_materno'] ?? '';
       final fullName = '$nombre $apellidoPaterno $apellidoMaterno'.trim();
+      final biometria = data['biometria_activa'] == true || data['biometria_activa'] == 1;
+      await prefs.setBool('biometria_activa', biometria);
       setState(() {
         _profileImageUrl = data['foto_url'];
         _userName = fullName;
         _userEmail = data['email'] ?? '';
         _userPhone = data['telefono'] ?? '';
+        _biometriaActiva = biometria;
       });
     }
   }
@@ -80,6 +87,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result['message'] ?? 'Error al subir la foto'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
+  }
+
+  Future<void> _toggleBiometria(bool activar) async {
+    if (_togglingBiometria) return;
+
+    if (activar) {
+      // Verificar que el dispositivo tenga biometría configurada
+      final disponible = await _biometricService.isAvailable();
+      if (!mounted) return;
+      if (!disponible) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Este dispositivo no tiene biometría configurada'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+
+      // Pedir al usuario que autentique con su huella
+      final autenticado = await _biometricService.authenticate();
+      if (!mounted) return;
+      if (!autenticado) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo verificar la huella'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+    }
+
+    setState(() => _togglingBiometria = true);
+
+    final result = await ApiService.updateBiometria(activa: activar);
+
+    if (!mounted) return;
+    setState(() => _togglingBiometria = false);
+
+    if (result['success'] == true) {
+      setState(() => _biometriaActiva = activar);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            activar ? 'Biometría activada correctamente' : 'Biometría desactivada',
+          ),
+          backgroundColor: activar ? AppTheme.accentColor : AppTheme.textSecondary,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Error al actualizar biometría'),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -261,7 +326,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.fingerprint,
                     title: 'Biometria',
                     subtitle: 'Huella dactilar / Face ID',
-                    trailing: Switch(value: true, onChanged: (_) {}),
+                    trailing: _togglingBiometria
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppTheme.primaryColor,
+                            ),
+                          )
+                        : Switch(
+                            value: _biometriaActiva,
+                            onChanged: _toggleBiometria,
+                            activeColor: AppTheme.accentColor,
+                          ),
                     onTap: () {},
                   ),
                   const Divider(height: 1),
