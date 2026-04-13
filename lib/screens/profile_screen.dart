@@ -248,8 +248,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _ProfileOption(
                     icon: Icons.lock_outline,
                     title: 'Seguridad',
-                    subtitle: 'Contrasena, PIN, 2FA',
-                    onTap: () {},
+                    subtitle: 'Contraseña',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const _EditPasswordScreen(),
+                      ),
+                    ),
                   ),
                   const Divider(height: 1),
                   _ProfileOption(
@@ -498,6 +503,196 @@ class _EditContactScreenState extends State<_EditContactScreen> {
                         )
                       : const Text(
                           'Guardar cambios',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Pantalla: Cambiar contraseña ────────────────────────────────────────────
+
+class _EditPasswordScreen extends StatefulWidget {
+  const _EditPasswordScreen();
+
+  @override
+  State<_EditPasswordScreen> createState() => _EditPasswordScreenState();
+}
+
+class _EditPasswordScreenState extends State<_EditPasswordScreen> {
+  final _actualController = TextEditingController();
+  final _nuevaController = TextEditingController();
+  final _confirmarController = TextEditingController();
+
+  bool _obscureActual = true;
+  bool _obscureNueva = true;
+  bool _obscureConfirmar = true;
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _actualController.dispose();
+    _nuevaController.dispose();
+    _confirmarController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _cambiarPassword() async {
+    final actual = _actualController.text;
+    final nueva = _nuevaController.text;
+    final confirmar = _confirmarController.text;
+
+    if (actual.isEmpty || nueva.isEmpty || confirmar.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Todos los campos son obligatorios'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
+    if (nueva != confirmar) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Las contraseñas nuevas no coinciden'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    final result = await ApiService.updatePassword(
+      passwordActual: actual,
+      passwordNueva: nueva,
+    );
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    if (result['success'] == true) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Contraseña actualizada correctamente'),
+          backgroundColor: AppTheme.accentColor,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Error al cambiar la contraseña'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Seguridad')),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Cambiar contraseña',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Ingresa tu contraseña actual y define una nueva',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 32),
+
+              // Contraseña actual
+              TextField(
+                controller: _actualController,
+                obscureText: _obscureActual,
+                decoration: InputDecoration(
+                  labelText: 'Contraseña actual',
+                  prefixIcon: const Icon(Icons.lock_rounded),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureActual ? Icons.visibility_off : Icons.visibility,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscureActual = !_obscureActual),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Nueva contraseña
+              TextField(
+                controller: _nuevaController,
+                obscureText: _obscureNueva,
+                decoration: InputDecoration(
+                  labelText: 'Nueva contraseña',
+                  prefixIcon: const Icon(Icons.lock_open_rounded),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureNueva ? Icons.visibility_off : Icons.visibility,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscureNueva = !_obscureNueva),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Confirmar nueva contraseña
+              TextField(
+                controller: _confirmarController,
+                obscureText: _obscureConfirmar,
+                decoration: InputDecoration(
+                  labelText: 'Confirmar nueva contraseña',
+                  prefixIcon: const Icon(Icons.lock_open_rounded),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureConfirmar
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscureConfirmar = !_obscureConfirmar),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Botón guardar
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isSaving ? null : _cambiarPassword,
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Cambiar contraseña',
                           style: TextStyle(fontSize: 16),
                         ),
                 ),

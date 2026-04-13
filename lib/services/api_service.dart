@@ -259,6 +259,35 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> updatePassword({
+    required String passwordActual,
+    required String passwordNueva,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.patch(
+        Uri.parse('$baseUrl/usuarios/password'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'password_actual': passwordActual,
+          'password_nueva': passwordNueva,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true};
+      } else {
+        return {'success': false, 'message': data['mensaje'] ?? 'Error al cambiar la contraseña'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión. Verifica tu red.'};
+    }
+  }
+
   static Future<Map<String, dynamic>> updateProfile({
     required String email,
     required String telefono,
