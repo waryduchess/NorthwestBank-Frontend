@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import '../services/biometric_service.dart';
 import '../theme/app_theme.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -18,6 +19,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _userName = '';
   String _userEmail = '';
   String _userPhone = '';
+  bool _biometriaActiva = false;
+  bool _togglingBiometria = false;
+  final _biometricService = BiometricService();
 
   @override
   void initState() {
@@ -45,11 +49,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final apellidoPaterno = data['apellido_paterno'] ?? '';
       final apellidoMaterno = data['apellido_materno'] ?? '';
       final fullName = '$nombre $apellidoPaterno $apellidoMaterno'.trim();
+      final biometria = data['biometria_activa'] == true || data['biometria_activa'] == 1;
+      await prefs.setBool('biometria_activa', biometria);
       setState(() {
         _profileImageUrl = data['foto_url'];
         _userName = fullName;
         _userEmail = data['email'] ?? '';
         _userPhone = data['telefono'] ?? '';
+        _biometriaActiva = biometria;
       });
     }
   }
@@ -80,6 +87,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result['message'] ?? 'Error al subir la foto'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
+  }
+
+  Future<void> _toggleBiometria(bool activar) async {
+    if (_togglingBiometria) return;
+
+    if (activar) {
+      // Verificar que el dispositivo tenga biometría configurada
+      final disponible = await _biometricService.isAvailable();
+      if (!mounted) return;
+      if (!disponible) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Este dispositivo no tiene biometría configurada'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+
+      // Pedir al usuario que autentique con su huella
+      final autenticado = await _biometricService.authenticate();
+      if (!mounted) return;
+      if (!autenticado) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo verificar la huella'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+    }
+
+    setState(() => _togglingBiometria = true);
+
+    final result = await ApiService.updateBiometria(activa: activar);
+
+    if (!mounted) return;
+    setState(() => _togglingBiometria = false);
+
+    if (result['success'] == true) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('biometria_activa', activar);
+      if (!mounted) return;
+      setState(() => _biometriaActiva = activar);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            activar ? 'Biometría activada correctamente' : 'Biometría desactivada',
+          ),
+          backgroundColor: activar ? AppTheme.accentColor : AppTheme.textSecondary,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Error al actualizar biometría'),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -225,13 +293,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.person_outline,
                     title: 'Datos personales',
                     subtitle: 'Nombre, email, telefono',
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => _PersonalDataDialog(
-                          userName: _userName,
-                          userEmail: _userEmail,
-                          userPhone: _userPhone,
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => _EditContactScreen(
+                            userName: _userName,
+                            userEmail: _userEmail,
+                            userPhone: _userPhone,
+                            onSaved: (newEmail, newPhone) {
+                              setState(() {
+                                _userEmail = newEmail;
+                                _userPhone = newPhone;
+                              });
+                            },
+                          ),
                         ),
                       );
                     },
@@ -240,15 +316,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _ProfileOption(
                     icon: Icons.lock_outline,
                     title: 'Seguridad',
-                    subtitle: 'Contrasena, PIN, 2FA',
-                    onTap: () {},
+                    subtitle: 'Contraseña',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const _EditPasswordScreen(),
+                      ),
+                    ),
                   ),
                   const Divider(height: 1),
                   _ProfileOption(
                     icon: Icons.fingerprint,
                     title: 'Biometria',
-                    subtitle: 'Huella dactilar / Face ID',
-                    trailing: Switch(value: true, onChanged: (_) {}),
+                    subtitle: 'Huella dactilar',
+                    trailing: _togglingBiometria
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppTheme.primaryColor,
+                            ),
+                          )
+                        : Switch(
+                            value: _biometriaActiva,
+                            onChanged: _toggleBiometria,
+                            activeColor: AppTheme.accentColor,
+                          ),
                     onTap: () {},
                   ),
                   const Divider(height: 1),
@@ -256,7 +350,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.notifications_outlined,
                     title: 'Notificaciones',
                     subtitle: 'Alertas push y email',
-                    onTap: () {},
+                    onTap: () => Navigator.pushNamed(context, '/notifications'),
                   ),
                 ],
               ),
@@ -269,7 +363,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.help_outline,
                     title: 'Ayuda y soporte',
                     subtitle: 'Preguntas frecuentes',
-                    onTap: () {},
+                    onTap: () => Navigator.pushNamed(context, '/faq'),
                   ),
                   const Divider(height: 1),
                   _ProfileOption(
@@ -336,24 +430,27 @@ class _ProfileOption extends StatelessWidget {
   }
 }
 
-class _PersonalDataDialog extends StatefulWidget {
+class _EditContactScreen extends StatefulWidget {
   final String userName;
   final String userEmail;
   final String userPhone;
+  final void Function(String email, String phone) onSaved;
 
-  const _PersonalDataDialog({
+  const _EditContactScreen({
     required this.userName,
     required this.userEmail,
     required this.userPhone,
+    required this.onSaved,
   });
 
   @override
-  State<_PersonalDataDialog> createState() => _PersonalDataDialogState();
+  State<_EditContactScreen> createState() => _EditContactScreenState();
 }
 
-class _PersonalDataDialogState extends State<_PersonalDataDialog> {
+class _EditContactScreenState extends State<_EditContactScreen> {
   late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -362,9 +459,6 @@ class _PersonalDataDialogState extends State<_PersonalDataDialog> {
     _phoneController = TextEditingController(text: widget.userPhone);
   }
 
-  bool _isEditingEmail = false;
-  bool _isEditingPhone = false;
-
   @override
   void dispose() {
     _emailController.dispose();
@@ -372,163 +466,322 @@ class _PersonalDataDialogState extends State<_PersonalDataDialog> {
     super.dispose();
   }
 
+  Future<void> _guardarCambios() async {
+    final email = _emailController.text.trim();
+    final telefono = _phoneController.text.trim();
+
+    if (email.isEmpty || telefono.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El email y el teléfono no pueden estar vacíos'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    final result = await ApiService.updateProfile(email: email, telefono: telefono);
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    if (result['success'] == true) {
+      widget.onSaved(email, telefono);
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Datos actualizados correctamente'),
+          backgroundColor: AppTheme.accentColor,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Error al actualizar'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Datos Personales', style: TextStyle(color: AppTheme.primaryColor)),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Nombre completo',
-              style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Editar contacto')),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Encabezado
+              const Text(
+                'Datos de contacto',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
               ),
-              child: Text(
-                widget.userName.isNotEmpty ? widget.userName : '—',
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+              const SizedBox(height: 4),
+              const Text(
+                'Actualiza tu correo y número de teléfono',
+                style: TextStyle(color: AppTheme.textSecondary),
               ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Email',
-              style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _isEditingEmail
-                      ? TextField(
-                          controller: _emailController,
-                          decoration: const InputDecoration(
-                            hintText: 'Ingresa tu email',
-                            prefixIcon: Icon(Icons.email_outlined, color: AppTheme.primaryColor),
+              const SizedBox(height: 32),
+
+              // Nombre (solo lectura)
+              TextField(
+                readOnly: true,
+                decoration: InputDecoration(
+                  labelText: 'Nombre completo',
+                  prefixIcon: const Icon(Icons.person_rounded),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                ),
+                controller: TextEditingController(text: widget.userName),
+              ),
+              const SizedBox(height: 16),
+
+              // Email
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Correo electrónico',
+                  prefixIcon: Icon(Icons.email_rounded),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Teléfono
+              TextField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Teléfono',
+                  prefixIcon: Icon(Icons.phone_rounded),
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Botón guardar
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isSaving ? null : _guardarCambios,
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
                           ),
-                          keyboardType: TextInputType.emailAddress,
                         )
-                      : Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.email_outlined, color: Colors.grey[600], size: 20),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _emailController.text,
-                                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 16),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
+                      : const Text(
+                          'Guardar cambios',
+                          style: TextStyle(fontSize: 16),
                         ),
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: Icon(
-                    _isEditingEmail ? Icons.check : Icons.edit,
-                    color: _isEditingEmail ? AppTheme.accentColor : AppTheme.primaryColor,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isEditingEmail = !_isEditingEmail;
-                    });
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Teléfono',
-              style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _isEditingPhone
-                      ? TextField(
-                          controller: _phoneController,
-                          decoration: const InputDecoration(
-                            hintText: 'Ingresa tu teléfono',
-                            prefixIcon: Icon(Icons.phone_outlined, color: AppTheme.primaryColor),
-                          ),
-                          keyboardType: TextInputType.phone,
-                        )
-                      : Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.phone_outlined, color: Colors.grey[600], size: 20),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _phoneController.text,
-                                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 16),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: Icon(
-                    _isEditingPhone ? Icons.check : Icons.edit,
-                    color: _isEditingPhone ? AppTheme.accentColor : AppTheme.primaryColor,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isEditingPhone = !_isEditingPhone;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar', style: TextStyle(color: AppTheme.textSecondary)),
+    );
+  }
+}
+
+// ─── Pantalla: Cambiar contraseña ────────────────────────────────────────────
+
+class _EditPasswordScreen extends StatefulWidget {
+  const _EditPasswordScreen();
+
+  @override
+  State<_EditPasswordScreen> createState() => _EditPasswordScreenState();
+}
+
+class _EditPasswordScreenState extends State<_EditPasswordScreen> {
+  final _actualController = TextEditingController();
+  final _nuevaController = TextEditingController();
+  final _confirmarController = TextEditingController();
+
+  bool _obscureActual = true;
+  bool _obscureNueva = true;
+  bool _obscureConfirmar = true;
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _actualController.dispose();
+    _nuevaController.dispose();
+    _confirmarController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _cambiarPassword() async {
+    final actual = _actualController.text;
+    final nueva = _nuevaController.text;
+    final confirmar = _confirmarController.text;
+
+    if (actual.isEmpty || nueva.isEmpty || confirmar.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Todos los campos son obligatorios'),
+          backgroundColor: AppTheme.errorColor,
         ),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Datos actualizados correctamente'),
-                backgroundColor: AppTheme.accentColor,
+      );
+      return;
+    }
+
+    if (nueva != confirmar) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Las contraseñas nuevas no coinciden'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    final result = await ApiService.updatePassword(
+      passwordActual: actual,
+      passwordNueva: nueva,
+    );
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    if (result['success'] == true) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Contraseña actualizada correctamente'),
+          backgroundColor: AppTheme.accentColor,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Error al cambiar la contraseña'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Seguridad')),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Cambiar contraseña',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
               ),
-            );
-          },
-          child: const Text('Guardar'),
+              const SizedBox(height: 4),
+              const Text(
+                'Ingresa tu contraseña actual y define una nueva',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 32),
+
+              // Contraseña actual
+              TextField(
+                controller: _actualController,
+                obscureText: _obscureActual,
+                decoration: InputDecoration(
+                  labelText: 'Contraseña actual',
+                  prefixIcon: const Icon(Icons.lock_rounded),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureActual ? Icons.visibility_off : Icons.visibility,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscureActual = !_obscureActual),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Nueva contraseña
+              TextField(
+                controller: _nuevaController,
+                obscureText: _obscureNueva,
+                decoration: InputDecoration(
+                  labelText: 'Nueva contraseña',
+                  prefixIcon: const Icon(Icons.lock_open_rounded),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureNueva ? Icons.visibility_off : Icons.visibility,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscureNueva = !_obscureNueva),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Confirmar nueva contraseña
+              TextField(
+                controller: _confirmarController,
+                obscureText: _obscureConfirmar,
+                decoration: InputDecoration(
+                  labelText: 'Confirmar nueva contraseña',
+                  prefixIcon: const Icon(Icons.lock_open_rounded),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureConfirmar
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscureConfirmar = !_obscureConfirmar),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Botón guardar
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isSaving ? null : _cambiarPassword,
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Cambiar contraseña',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ],
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
     );
   }
 }

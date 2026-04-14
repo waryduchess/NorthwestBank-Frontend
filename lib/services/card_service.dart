@@ -1,60 +1,19 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/card_model.dart';
-
-/// Servicio para gestionar datos de tarjetas
-/// Este servicio actúa como interfaz entre el frontend y el backend
-/// Aquí es donde se conectara con la API del backend
+import '../services/api_service.dart';
 
 class CardService {
-  // Simular una lista de tarjetas del usuario
-  // En una aplicacion real, esto vendria del backend
   static Future<List<CardModel>> getUserCards() async {
-    // TODO: Reemplazar con llamada real a la API del backend
-    // return await dio.get('/api/cards')
+    final prefs = await SharedPreferences.getInstance();
+    final nombreTitular = (prefs.getString('user_name') ?? '').toUpperCase();
 
-    // Por ahora retornamos datos de ejemplo
-    await Future.delayed(const Duration(seconds: 1));
+    final result = await ApiService.getCards();
+    if (!result['success']) return [];
 
-    return [
-      CardModel(
-        id: '1',
-        tipoCuenta: 'Cuenta de Ahorro',
-        numeroCuenta: '**** **** **** 4521',
-        saldo: 12450.75,
-        moneda: 'USD',
-        imagenTarjeta: 'assets/images/tarjeta_uno.png',
-        activa: true,
-        nombreUsuario: 'Erik',
-        apellidoUsuario: '',
-        fechaVencimiento: '12/25',
-        nombreTitular: 'ERIK',
-      ),
-      CardModel(
-        id: '2',
-        tipoCuenta: 'Cuenta Corriente',
-        numeroCuenta: '**** **** **** 7833',
-        saldo: 3200.00,
-        moneda: 'USD',
-        imagenTarjeta: 'assets/images/tarjeta_dos.png',
-        activa: true,
-        nombreUsuario: 'Erik',
-        apellidoUsuario: '',
-        fechaVencimiento: '11/26',
-        nombreTitular: 'ERIK',
-      ),
-      CardModel(
-        id: '3',
-        tipoCuenta: 'Tarjeta de Credito',
-        numeroCuenta: '**** **** **** 5890',
-        saldo: 8500.00,
-        moneda: 'USD',
-        imagenTarjeta: 'assets/images/tarjeta_tres.png',
-        activa: true,
-        nombreUsuario: 'Erik',
-        apellidoUsuario: '',
-        fechaVencimiento: '09/27',
-        nombreTitular: 'ERIK',
-      ),
-    ];
+    final List<dynamic> data = result['data'];
+    return data
+        .map((json) => CardModel.fromBackend(json, nombreTitular: nombreTitular))
+        .toList();
   }
 
   /// Obtener detalles de una tarjeta especifica

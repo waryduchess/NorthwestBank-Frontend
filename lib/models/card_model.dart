@@ -10,6 +10,13 @@ class CardModel {
   final String? apellidoUsuario;
   final String? fechaVencimiento;
   final String? nombreTitular;
+  final String? categoria;
+  final double? creditoDisponible;
+  final double? limiteCredito;
+  final String? cvv;
+  final String? nip;
+  final int? cuentaId;
+  final String? numeroTarjetaRaw;
 
   CardModel({
     required this.id,
@@ -23,6 +30,13 @@ class CardModel {
     this.apellidoUsuario,
     this.fechaVencimiento,
     this.nombreTitular,
+    this.categoria,
+    this.creditoDisponible,
+    this.limiteCredito,
+    this.cvv,
+    this.nip,
+    this.cuentaId,
+    this.numeroTarjetaRaw,
   });
 
   // Constructor para tarjetas solicitables (inactivas)
@@ -39,6 +53,58 @@ class CardModel {
       moneda: 'USD',
       imagenTarjeta: imagenTarjeta,
       activa: false,
+    );
+  }
+
+  // Mapeo de tipo de tarjeta a imagen
+  static String imagenParaTipo(String tipo) {
+    switch (tipo.toLowerCase()) {
+      case 'orbe':
+        return 'assets/images/tarjeta_uno.png';
+      case 'silverstone':
+        return 'assets/images/tarjeta_dos.png';
+      case 'imperium':
+        return 'assets/images/tarjeta_tres.png';
+      case 'nexus':
+      case 'vertex':
+      default:
+        return 'assets/images/tarjeta_NB.jpeg';
+    }
+  }
+
+  // Enmascarar número de tarjeta → **** **** **** 1234
+  static String _mascarar(String numero) {
+    if (numero.length < 4) return numero;
+    final ultimos = numero.substring(numero.length - 4);
+    return '**** **** **** $ultimos';
+  }
+
+  // Factory para respuesta real del backend (GET /tarjetas)
+  factory CardModel.fromBackend(Map<String, dynamic> json, {String nombreTitular = ''}) {
+    final tipo = json['tipo'] as String? ?? '';
+    final rawNumero = json['numero_tarjeta'] as String? ?? '';
+    return CardModel(
+      id: json['id'].toString(),
+      tipoCuenta: tipo,
+      numeroCuenta: _mascarar(rawNumero),
+      saldo: double.tryParse(json['saldo'].toString()) ?? 0.0,
+      moneda: 'MXN',
+      imagenTarjeta: imagenParaTipo(tipo),
+      activa: json['estado'] == 'activa',
+      fechaVencimiento: json['fecha_expiracion'] as String?,
+      nombreTitular: nombreTitular,
+      nombreUsuario: nombreTitular,
+      categoria: json['categoria'] as String?,
+      creditoDisponible: json['credito_disponible'] != null
+          ? double.tryParse(json['credito_disponible'].toString())
+          : null,
+      limiteCredito: json['limite_credito'] != null
+          ? double.tryParse(json['limite_credito'].toString())
+          : null,
+      cvv: json['cvv'] as String?,
+      nip: json['nip'] as String?,
+      cuentaId: json['cuenta_id'] as int?,
+      numeroTarjetaRaw: rawNumero,
     );
   }
 

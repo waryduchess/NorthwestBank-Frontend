@@ -115,6 +115,240 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> getAccounts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.get(
+        Uri.parse('$baseUrl/cuentas'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data};
+      } else {
+        return {
+          'success': false,
+          'message': '${data['mensaje'] ?? 'Error al obtener cuentas'} (código ${response.statusCode})',
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> registerCard({
+    required int cuentaId,
+    required int tipoTarjetaId,
+    required String numeroTarjeta,
+    required String cvv,
+    required String fechaExpiracion,
+    required String nip,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.post(
+        Uri.parse('$baseUrl/tarjetas'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'cuenta_id': cuentaId,
+          'tipo_tarjeta_id': tipoTarjetaId,
+          'numero_tarjeta': numeroTarjeta,
+          'cvv': cvv,
+          'fecha_expiracion': fechaExpiracion,
+          'nip': nip,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 201) {
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'message': data['mensaje'] ?? 'Error al registrar tarjeta'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión. Verifica tu red.'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> transfer({
+    required int cuentaOrigenId,
+    required String numeroCuentaDestino,
+    required double monto,
+    String? descripcion,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.post(
+        Uri.parse('$baseUrl/transacciones/transferir'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'cuenta_origen_id': cuentaOrigenId,
+          'numero_cuenta_destino': numeroCuentaDestino,
+          'monto': monto,
+          if (descripcion != null && descripcion.isNotEmpty) 'descripcion': descripcion,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'message': data['mensaje'] ?? 'Error al realizar transferencia'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión. Verifica tu red.'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> transferByCard({
+    required int cuentaOrigenId,
+    required String numeroTarjetaDestino,
+    required double monto,
+    String? descripcion,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.post(
+        Uri.parse('$baseUrl/transacciones/transferir'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'cuenta_origen_id': cuentaOrigenId,
+          'numero_tarjeta_destino': numeroTarjetaDestino,
+          'monto': monto,
+          if (descripcion != null && descripcion.isNotEmpty) 'descripcion': descripcion,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'message': data['mensaje'] ?? 'Error al realizar transferencia'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión. Verifica tu red.'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getCards() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.get(
+        Uri.parse('$baseUrl/tarjetas'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'message': data['mensaje'] ?? 'Error al obtener tarjetas'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión. Verifica tu red.'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateBiometria({
+    required bool activa,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.patch(
+        Uri.parse('$baseUrl/usuarios/biometria'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'activa': activa}),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true};
+      } else {
+        return {'success': false, 'message': data['mensaje'] ?? 'Error al actualizar biometría'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión. Verifica tu red.'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> updatePassword({
+    required String passwordActual,
+    required String passwordNueva,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.patch(
+        Uri.parse('$baseUrl/usuarios/password'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'password_actual': passwordActual,
+          'password_nueva': passwordNueva,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true};
+      } else {
+        return {'success': false, 'message': data['mensaje'] ?? 'Error al cambiar la contraseña'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión. Verifica tu red.'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateProfile({
+    required String email,
+    required String telefono,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.patch(
+        Uri.parse('$baseUrl/usuarios/perfil'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'email': email,
+          'telefono': telefono,
+        }),
+      );
+
+      Map<String, dynamic> data;
+      try {
+        data = jsonDecode(response.body);
+      } catch (_) {
+        return {'success': false, 'message': 'Respuesta inválida del servidor (${response.statusCode})'};
+      }
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data['usuario']};
+      } else {
+        return {'success': false, 'message': data['mensaje'] ?? 'Error al actualizar perfil (${response.statusCode})'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
   static Future<Map<String, dynamic>> uploadProfilePhoto(File imageFile) async {
     try {
       final prefs = await SharedPreferences.getInstance();
