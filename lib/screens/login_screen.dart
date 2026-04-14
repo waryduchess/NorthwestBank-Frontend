@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../services/biometric_service.dart';
 import '../services/api_service.dart';
@@ -16,6 +17,25 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _mostrarBotonBiometria = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _verificarBiometria();
+  }
+
+  Future<void> _verificarBiometria() async {
+    final prefs = await SharedPreferences.getInstance();
+    final biometriaActiva = prefs.getBool('biometria_activa') ?? false;
+    final tieneToken = (prefs.getString('jwt_token') ?? '').isNotEmpty;
+    final dispositivoCompatible = await _biometricService.isAvailable();
+    if (mounted) {
+      setState(() {
+        _mostrarBotonBiometria = biometriaActiva && tieneToken && dispositivoCompatible;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -142,49 +162,40 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      try {
-                        if (await _biometricService.isAvailable()) {
+                if (_mostrarBotonBiometria) ...[
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        try {
                           final authenticated =
                               await _biometricService.authenticate();
                           if (authenticated && context.mounted) {
                             Navigator.pushReplacementNamed(
                                 context, '/dashboard');
                           }
-                        } else {
+                        } catch (e) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text(
-                                    'Biometría no disponible en este dispositivo'),
+                                content: Text('Error al autenticar con biometría'),
                               ),
                             );
                           }
                         }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Error al autenticar con biometría'),
-                            ),
-                          );
-                        }
-                      }
-                    },
-                    icon: const Icon(Icons.fingerprint),
-                    label: const Text('Ingresar con biometria'),
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                      },
+                      icon: const Icon(Icons.fingerprint),
+                      label: const Text('Ingresar con biometria'),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
