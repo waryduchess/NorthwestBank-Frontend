@@ -156,6 +156,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 _applyFilters();
               },
             ),
+            ListTile(
+              title: const Text('Servicio'),
+              onTap: () {
+                setState(() => selectedTipo = 'Servicio');
+                Navigator.pop(context);
+                _applyFilters();
+              },
+            ),
           ],
         ),
       ),
