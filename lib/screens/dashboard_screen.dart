@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../models/card_model.dart';
 import '../services/card_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/quick_action_button.dart';
 import '../widgets/transaction_tile.dart';
 import 'card_detail_screen.dart';
@@ -17,12 +19,34 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   late Future<List<CardModel>> _cardsFuture;
   String _userName = '';
+  int _noLeidas = 0;
+  Timer? _notifTimer;
 
   @override
   void initState() {
     super.initState();
     _cardsFuture = CardService.getUserCards();
     _loadUserName();
+    _checkNotificaciones();
+    _notifTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _checkNotificaciones(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _notifTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkNotificaciones() async {
+    final notifs = await NotificationService.getNotifications();
+    if (mounted) {
+      setState(() {
+        _noLeidas = notifs.where((n) => !n.leida).length;
+      });
+    }
   }
 
   Future<void> _loadUserName() async {
@@ -180,12 +204,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: const Text('NorthwestBank'),
         actions: [
           IconButton(
-            icon: const Badge(
-              label: Text('3'),
-              child: Icon(Icons.notifications_outlined),
-            ),
-            onPressed: () {
-              Navigator.pushNamed(context, '/notifications');
+            icon: _noLeidas > 0
+                ? Badge(
+                    label: Text('$_noLeidas'),
+                    child: const Icon(Icons.notifications_outlined),
+                  )
+                : const Icon(Icons.notifications_outlined),
+            onPressed: () async {
+              await Navigator.pushNamed(context, '/notifications');
+              _checkNotificaciones();
             },
           ),
         ],

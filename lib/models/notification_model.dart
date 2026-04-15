@@ -18,14 +18,13 @@ class NotificationModel {
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    final fechaRaw = json['created_at'] ?? json['fecha'];
     return NotificationModel(
-      id: json['id'] ?? '',
+      id: json['id'].toString(),
       titulo: json['titulo'] ?? '',
       mensaje: json['mensaje'] ?? '',
-      fecha: json['fecha'] != null
-          ? DateTime.parse(json['fecha'].toString())
-          : DateTime.now(),
-      leida: json['leida'] ?? false,
+      fecha: fechaRaw != null ? DateTime.parse(fechaRaw.toString()) : DateTime.now(),
+      leida: json['leida'] == true || json['leida'] == 1,
       tipo: json['tipo'] ?? 'info',
       icono: json['icono'],
     );

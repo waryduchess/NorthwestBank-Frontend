@@ -12,9 +12,12 @@ import 'screens/notifications_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/cards_gallery_screen.dart';
 import 'screens/faq_screen.dart';
+import 'services/local_notification_service.dart';
 
 void main() async  {
+  WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
+  await LocalNotificationService.init();
   runApp(const NorthwestBankApp());
 }
 
