@@ -255,49 +255,31 @@ class PaymentService {
   }
 
   static Future<Map<String, dynamic>> processPayment({
-    required String serviceId,
-    required String referencia,
-    required String monto,
-    required String cuentaDebito,
-    String? descripcion,
+    required int tarjetaId,
+    required double monto,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token') ?? '';
 
-      // BACKEND: Descomentar cuando API esté lista
-      // final response = await http.post(
-      //   Uri.parse('${ApiService.baseUrl}/pagos/procesar'),
-      //   headers: {
-      //     'Authorization': 'Bearer $token',
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: jsonEncode({
-      //     'serviceId': serviceId,
-      //     'referencia': referencia,
-      //     'monto': monto,
-      //     'cuentaDebito': cuentaDebito,
-      //     'descripcion': descripcion,
-      //   }),
-      // );
-      //
-      // if (response.statusCode == 200) {
-      //   final data = jsonDecode(response.body);
-      //   return {'success': true, 'data': data};
-      // } else {
-      //   final data = jsonDecode(response.body);
-      //   return {'success': false, 'message': data['mensaje'] ?? 'Error al procesar pago'};
-      // }
-
-      // POR AHORA: Solo retornar success
-      return {
-        'success': true,
-        'data': {
-          'referencia': referencia,
+      final response = await http.post(
+        Uri.parse('${ApiService.baseUrl}/servicios/servicio'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'tarjeta_id': tarjetaId,
           'monto': monto,
-          'mensaje': 'Pago procesado correctamente',
-        }
-      };
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'saldo_nuevo': data['saldo_nuevo']};
+      } else {
+        return {'success': false, 'message': data['mensaje'] ?? 'Error al procesar el pago'};
+      }
     } catch (e) {
       return {'success': false, 'message': 'Error de conexión. Verifica tu red.'};
     }

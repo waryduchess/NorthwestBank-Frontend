@@ -142,40 +142,28 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       return;
     }
 
-    if (_selectedCard!.saldo < monto) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Saldo insuficiente. Disponible: \$${_selectedCard!.saldo.toStringAsFixed(2)} MXN',
-          ),
-          backgroundColor: AppTheme.errorColor,
-        ),
-      );
-      return;
-    }
-
     setState(() => _processingPayment = true);
 
     final result = await PaymentService.processPayment(
-      serviceId: _selectedSubcategoryId ?? '',
-      referencia: referencia,
-      monto: montoTexto,
-      cuentaDebito: _selectedCard!.id,
+      tarjetaId: int.parse(_selectedCard!.id),
+      monto: monto,
     );
 
     if (!mounted) return;
     setState(() => _processingPayment = false);
 
     if (result['success'] == true) {
-      // Actualizar saldo local de la tarjeta
+      // Actualizar saldo con el valor real que devuelve el backend
       final cardIdx = _tarjetas.indexWhere((c) => c.id == _selectedCard!.id);
       final cardPagada = _selectedCard!;
       if (cardIdx != -1) {
+        final nuevoSaldo = (result['saldo_nuevo'] as num?)?.toDouble()
+            ?? (cardPagada.saldo - monto);
         final actualizada = CardModel(
           id: cardPagada.id,
           tipoCuenta: cardPagada.tipoCuenta,
           numeroCuenta: cardPagada.numeroCuenta,
-          saldo: cardPagada.saldo - monto,
+          saldo: nuevoSaldo,
           moneda: cardPagada.moneda,
           imagenTarjeta: cardPagada.imagenTarjeta,
           activa: cardPagada.activa,
@@ -505,15 +493,13 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                         ),
                       )
                     : DropdownButtonFormField<CardModel>(
-                        key: ValueKey(_selectedCard?.id),
-                        initialValue: _selectedCard,
+                        value: _selectedCard,
                         isExpanded: true,
                         itemHeight: 64,
                         decoration: const InputDecoration(
                           labelText: 'Tarjeta a debitar',
                           prefixIcon: Icon(Icons.credit_card_outlined),
                         ),
-                        // Texto compacto en el campo (una sola línea)
                         selectedItemBuilder: (context) => _tarjetas.map((card) {
                           return Align(
                             alignment: Alignment.centerLeft,
@@ -524,7 +510,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                             ),
                           );
                         }).toList(),
-                        // Detalle completo en el menú desplegable
                         items: _tarjetas.map((card) {
                           return DropdownMenuItem<CardModel>(
                             value: card,
