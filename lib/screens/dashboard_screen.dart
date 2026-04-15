@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../models/card_model.dart';
+import '../models/transaction.dart';
+import '../services/api_service.dart';
 import '../services/card_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/quick_action_button.dart';
 import '../widgets/transaction_tile.dart';
 import 'card_detail_screen.dart';
+import 'transaction_detail_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -21,12 +24,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _userName = '';
   int _noLeidas = 0;
   Timer? _notifTimer;
+  List<Transaction> _ultimosMovimientos = [];
+  bool _isLoadingMovimientos = false;
 
   @override
   void initState() {
     super.initState();
     _cardsFuture = CardService.getUserCards();
     _loadUserName();
+    _loadUltimosMovimientos();
     _checkNotificaciones();
     _notifTimer = Timer.periodic(
       const Duration(seconds: 30),
@@ -54,6 +60,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _userName = prefs.getString('user_name') ?? '';
     });
+  }
+
+  Future<void> _loadUltimosMovimientos() async {
+    setState(() => _isLoadingMovimientos = true);
+    final data = await ApiService.getTransactions();
+    if (mounted) {
+      final todas = data.map((t) => Transaction.fromBackend(t)).toList();
+      todas.sort((a, b) => b.fecha.compareTo(a.fecha));
+      setState(() {
+        _ultimosMovimientos = todas.take(5).toList();
+        _isLoadingMovimientos = false;
+      });
+    }
+  }
+
+  String _formatFecha(DateTime fecha) {
+    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    return '${fecha.day} ${meses[fecha.month - 1]} · ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
   }
 
   void _openCardDetail(BuildContext context, CardModel card) {
@@ -380,17 +404,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     QuickActionButton(
                       icon: Icons.swap_horiz,
                       label: 'Transferir',
-                      onTap: () => Navigator.pushNamed(context, '/transfers'),
+                      onTap: () => Navigator.pushNamed(context, '/transfers')
+                          .then((_) => _loadUltimosMovimientos()),
                     ),
                     QuickActionButton(
                       icon: Icons.receipt_long,
                       label: 'Historial',
-                      onTap: () => Navigator.pushNamed(context, '/transactions'),
+                      onTap: () => Navigator.pushNamed(context, '/transactions')
+                          .then((_) => _loadUltimosMovimientos()),
                     ),
                     QuickActionButton(
                       icon: Icons.payment,
                       label: 'Pagos',
-                      onTap: () => Navigator.pushNamed(context, '/payments'),
+                      onTap: () => Navigator.pushNamed(context, '/payments')
+                          .then((_) => _loadUltimosMovimientos()),
                     ),
                     QuickActionButton(
                       icon: Icons.person_outline,
@@ -415,33 +442,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     TextButton(
-                      onPressed: () => Navigator.pushNamed(context, '/transactions'),
+                      onPressed: () => Navigator.pushNamed(context, '/transactions')
+                          .then((_) => _loadUltimosMovimientos()),
                       child: const Text('Ver todos'),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                const TransactionTile(
-                  titulo: 'Transferencia enviada',
-                  descripcion: 'A Juan Perez',
-                  monto: -500.00,
-                  fecha: '12 Feb 2026',
-                  icono: Icons.arrow_upward,
-                ),
-                const TransactionTile(
-                  titulo: 'Deposito recibido',
-                  descripcion: 'Nomina mensual',
-                  monto: 3500.00,
-                  fecha: '10 Feb 2026',
-                  icono: Icons.arrow_downward,
-                ),
-                const TransactionTile(
-                  titulo: 'Pago de servicio',
-                  descripcion: 'Electricidad',
-                  monto: -85.50,
-                  fecha: '8 Feb 2026',
-                  icono: Icons.bolt,
-                ),
+                if (_isLoadingMovimientos)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_ultimosMovimientos.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        'Sin movimientos recientes',
+                        style: TextStyle(color: AppTheme.textSecondary),
+                      ),
+                    ),
+                  )
+                else
+                  ...(_ultimosMovimientos.map((t) => GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TransactionDetailScreen(transaction: t),
+                      ),
+                    ),
+                    child: TransactionTile(
+                      titulo: t.titulo,
+                      descripcion: t.descripcion,
+                      monto: t.monto,
+                      fecha: _formatFecha(t.fecha),
+                      icono: t.icono,
+                    ),
+                  ))),
               ],
             ),
           );

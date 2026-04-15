@@ -44,9 +44,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     setState(() => _isLoading = true);
     final data = await ApiService.getTransactions();
     if (mounted) {
+      final lista = data.map((t) => Transaction.fromBackend(t)).toList();
+      lista.sort((a, b) => b.fecha.compareTo(a.fecha));
       setState(() {
-        allTransactions = data.map((t) => Transaction.fromBackend(t)).toList();
-        filteredTransactions = allTransactions;
+        allTransactions = lista;
+        filteredTransactions = lista;
         _isLoading = false;
       });
     }
