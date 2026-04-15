@@ -141,7 +141,6 @@ class ApiService {
 
 // Registro de tarjeta
   static Future<Map<String, dynamic>> registerCard({
-    required int cuentaId,
     required int tipoTarjetaId,
     required String numeroTarjeta,
     required String cvv,
@@ -158,7 +157,6 @@ class ApiService {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          'cuenta_id': cuentaId,
           'tipo_tarjeta_id': tipoTarjetaId,
           'numero_tarjeta': numeroTarjeta,
           'cvv': cvv,

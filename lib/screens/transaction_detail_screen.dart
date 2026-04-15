@@ -240,6 +240,39 @@ class TransactionDetailScreen extends StatelessWidget {
           ),
         ];
 
+      case 'Servicio':
+        return [
+          Text(
+            'Información del pago de servicio',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 16),
+          _buildDetailCard(
+            icon: Icons.receipt_long_outlined,
+            title: 'Servicio',
+            value: transaction.descripcion,
+          ),
+          const SizedBox(height: 12),
+          _buildDetailCard(
+            icon: Icons.schedule,
+            title: 'Hora',
+            value: '${transaction.fecha.hour.toString().padLeft(2, '0')}:${transaction.fecha.minute.toString().padLeft(2, '0')}',
+          ),
+          const SizedBox(height: 12),
+          _buildDetailCard(
+            icon: Icons.confirmation_number,
+            title: 'Referencia',
+            value: transaction.referencia ?? '—',
+          ),
+          const SizedBox(height: 12),
+          _buildDetailCard(
+            icon: Icons.check_circle,
+            title: 'Estado',
+            value: 'Completado',
+            valueColor: Colors.green,
+          ),
+        ];
+
       default:
         return [];
     }

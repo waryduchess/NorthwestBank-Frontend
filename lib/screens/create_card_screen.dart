@@ -36,7 +36,6 @@ class _CreateCardScreenState extends State<CreateCardScreen> {
   final _cvvController = TextEditingController();
   final _fechaVencimientoController = TextEditingController();
 
-  int? _cuentaId;
   _CardTypeOption _selectedType = _debitTypes.first;
   bool _detectedDebito = false;
   bool _isSubmitting = false;
@@ -44,7 +43,6 @@ class _CreateCardScreenState extends State<CreateCardScreen> {
   @override
   void initState() {
     super.initState();
-    _loadAccounts();
     _numeroTarjetaController.addListener(_onCardNumberChanged);
   }
 
@@ -74,35 +72,12 @@ class _CreateCardScreenState extends State<CreateCardScreen> {
     }
   }
 
-  Future<void> _loadAccounts() async {
-    final result = await ApiService.getAccounts();
-    if (!mounted) return;
-    if (!result['success']) return;
-
-    final raw = result['data'];
-    final list = (raw is List ? raw : [])
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-
-    if (list.isNotEmpty) {
-      setState(() => _cuentaId = list.first['id'] as int?);
-    }
-  }
-
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
-
-    if (_cuentaId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo obtener la cuenta. Intenta de nuevo.')),
-      );
-      return;
-    }
 
     setState(() => _isSubmitting = true);
 
     final result = await ApiService.registerCard(
-      cuentaId: _cuentaId!,
       tipoTarjetaId: _selectedType.id,
       numeroTarjeta: _numeroTarjetaController.text,
       cvv: _cvvController.text,
