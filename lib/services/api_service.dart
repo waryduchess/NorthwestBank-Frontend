@@ -88,6 +88,7 @@ class ApiService {
   }
 }
 
+// Obtener perfil del usuario foto
   static Future<Map<String, dynamic>> getProfile() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -115,6 +116,7 @@ class ApiService {
     }
   }
 
+// Obtener cuentas del usuario
   static Future<Map<String, dynamic>> getAccounts() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -137,6 +139,7 @@ class ApiService {
     }
   }
 
+// Registro de tarjeta
   static Future<Map<String, dynamic>> registerCard({
     required int cuentaId,
     required int tipoTarjetaId,
@@ -174,6 +177,7 @@ class ApiService {
     }
   }
 
+// Transferencia por cuenta
   static Future<Map<String, dynamic>> transfer({
     required int cuentaOrigenId,
     required String numeroCuentaDestino,
@@ -207,6 +211,7 @@ class ApiService {
     }
   }
 
+// Transferencia por tarjeta
   static Future<Map<String, dynamic>> transferByCard({
     required int cuentaOrigenId,
     required String numeroTarjetaDestino,
@@ -240,6 +245,7 @@ class ApiService {
     }
   }
 
+// Obtener tarjetas del usuario
   static Future<Map<String, dynamic>> getCards() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -259,6 +265,7 @@ class ApiService {
     }
   }
 
+// Actualizacion de la biometria
   static Future<Map<String, dynamic>> updateBiometria({
     required bool activa,
   }) async {
@@ -284,6 +291,7 @@ class ApiService {
     }
   }
 
+// Actualizacion de contraseña
   static Future<Map<String, dynamic>> updatePassword({
     required String passwordActual,
     required String passwordNueva,
@@ -313,6 +321,7 @@ class ApiService {
     }
   }
 
+// Actualizacion del perfil (email y telefono)
   static Future<Map<String, dynamic>> updateProfile({
     required String email,
     required String telefono,
@@ -349,6 +358,7 @@ class ApiService {
     }
   }
 
+// Actualizacion de la foto de perfil
   static Future<Map<String, dynamic>> uploadProfilePhoto(File imageFile) async {
     try {
       final prefs = await SharedPreferences.getInstance();
