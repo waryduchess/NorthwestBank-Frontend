@@ -26,6 +26,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Timer? _notifTimer;
   List<Transaction> _ultimosMovimientos = [];
   bool _isLoadingMovimientos = false;
+  List<CardModel> _favCards = [];
+  bool _isLoadingFavCards = false;
 
   @override
   void initState() {
@@ -33,6 +35,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _cardsFuture = CardService.getUserCards();
     _loadUserName();
     _loadUltimosMovimientos();
+    _loadFavoriteCards();
     _checkNotificaciones();
     _notifTimer = Timer.periodic(
       const Duration(seconds: 30),
@@ -60,6 +63,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _userName = prefs.getString('user_name') ?? '';
     });
+  }
+
+  Future<void> _loadFavoriteCards() async {
+    setState(() => _isLoadingFavCards = true);
+    final prefs = await SharedPreferences.getInstance();
+    final favIds = prefs.getStringList('tarjetas_favoritas') ?? [];
+    final allCards = await CardService.getUserCards();
+    if (mounted) {
+      setState(() {
+        _favCards = allCards.where((c) => favIds.contains(c.id)).toList();
+        _isLoadingFavCards = false;
+      });
+    }
   }
 
   Future<void> _loadUltimosMovimientos() async {
@@ -177,7 +193,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildCuentasButton(BuildContext context, List<CardModel> cards) {
     return GestureDetector(
       onTap: () {
-        Navigator.pushNamed(context, '/cards-gallery');
+        Navigator.pushNamed(context, '/cards-gallery')
+            .then((_) => _loadFavoriteCards());
       },
       child: Container(
         width: double.infinity,
@@ -287,88 +304,104 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Tarjetas de dinero (originales)
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Cuenta de Ahorro',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.textPrimary,
-                              ),
+                // Tarjetas favoritas
+                if (_isLoadingFavCards)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_favCards.isEmpty)
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.star_border, color: Colors.amber, size: 28),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Marca tarjetas como favoritas en "Mis tarjetas" para verlas aquí',
+                              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                             ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              '\$12,450.75 USD',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Icon(
-                          Icons.chevron_right,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Cuenta Corriente',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.textPrimary,
+                  )
+                else
+                  ...(_favCards.map((card) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Card(
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          image: DecorationImage(
+                            image: AssetImage(card.imagenTarjeta),
+                            fit: BoxFit.cover,
+                            colorFilter: ColorFilter.mode(
+                              Colors.black.withValues(alpha: 0.3),
+                              BlendMode.darken,
+                            ),
+                          ),
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => CardDetailScreen(card: card)),
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        card.tipoCuenta,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        card.numeroCuenta,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.white70,
+                                          letterSpacing: 1,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        '\$${card.saldo.toStringAsFixed(2)} ${card.moneda}',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const Icon(Icons.star, color: Colors.amber, size: 22),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              '\$3,200.00 USD',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                        const Icon(
-                          Icons.chevron_right,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
+                  ))),
 
                 const SizedBox(height: 24),
 
