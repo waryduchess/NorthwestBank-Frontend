@@ -1,4 +1,9 @@
+import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/bank_model.dart';
 import '../models/beneficiary_model.dart';
 import '../models/card_model.dart';
@@ -254,15 +259,26 @@ class _TransfersScreenState extends State<TransfersScreen> {
       setState(() => _isProcessing = false);
 
       if (result['success']) {
+        final referencia = result['data']['referencia']?.toString() ?? '—';
+        final origenLabel =
+            '${_cuentaOrigen!['tipo'].toString().toUpperCase()} · **** ${_cuentaOrigen!['numero_cuenta'].toString().substring(_cuentaOrigen!['numero_cuenta'].toString().length - 4)}';
+        final destinoLabel =
+            '${_cuentaDestino!['tipo'].toString().toUpperCase()} · **** ${_cuentaDestino!['numero_cuenta'].toString().substring(_cuentaDestino!['numero_cuenta'].toString().length - 4)}';
+        final descripcion = _descripcionController.text;
         _montoController.clear();
         _descripcionController.clear();
         await _loadCuentas();
-        scaffold.showSnackBar(
-          SnackBar(
-            content: Text('Transferencia realizada · Ref: ${result['data']['referencia']}'),
-            backgroundColor: AppTheme.accentColor,
-          ),
-        );
+        if (mounted) {
+          _showComprobanteTransferencia(
+            tipo: 'Entre mis cuentas',
+            origen: origenLabel,
+            destino: destinoLabel,
+            monto: monto,
+            referencia: referencia,
+            descripcion: descripcion,
+            fecha: DateTime.now(),
+          );
+        }
       } else {
         scaffold.showSnackBar(
           SnackBar(content: Text(result['message'] ?? 'Error'), backgroundColor: AppTheme.errorColor),
@@ -310,22 +326,254 @@ class _TransfersScreenState extends State<TransfersScreen> {
       setState(() => _isProcessing = false);
 
       if (result['success']) {
+        final referencia = result['data']['referencia']?.toString() ?? '—';
+        final origenLabel =
+            '${_tarjetaOrigen!.tipoCuenta.toUpperCase()} · ${_tarjetaOrigen!.numeroCuenta}';
+        final last4 = numeroDestino.substring(numeroDestino.length - 4);
+        final destinoLabel = 'Tarjeta · **** $last4';
+        final descripcion = _descripcionController.text;
         _montoController.clear();
         _descripcionController.clear();
         _numeroTarjetaDestinoController.clear();
         await _loadTarjetas();
+        if (mounted) {
+          _showComprobanteTransferencia(
+            tipo: 'Por tarjeta',
+            origen: origenLabel,
+            destino: destinoLabel,
+            monto: monto,
+            referencia: referencia,
+            descripcion: descripcion,
+            fecha: DateTime.now(),
+          );
+        }
+      } else {
         scaffold.showSnackBar(
-          SnackBar(
-            content: Text('Transferencia realizada · Ref: ${result['data']['referencia']}'),
-            backgroundColor: AppTheme.accentColor,
-          ),
+          SnackBar(content: Text(result['message'] ?? 'Error'), backgroundColor: AppTheme.errorColor),
         );
+      }
+    } else if (_transferType == 'a_terceros') {
+      if (_cuentaOrigen == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Selecciona la cuenta origen'), backgroundColor: AppTheme.errorColor),
+        );
+        return;
+      }
+      if (_selectedBankId == null || _selectedBeneficiaryId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Selecciona el banco y beneficiario'), backgroundColor: AppTheme.errorColor),
+        );
+        return;
+      }
+
+      setState(() => _isProcessing = true);
+      final scaffold = ScaffoldMessenger.of(context);
+
+      final result = await TransferService.processTransfer(
+        cuentaOrigen: _cuentaOrigen!['id'].toString(),
+        monto: monto.toString(),
+        descripcion: _descripcionController.text,
+        beneficiarioId: _selectedBeneficiaryId,
+      );
+
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+
+      if (result['success']) {
+        final referencia = result['data']['referencia']?.toString()
+            ?? 'TRF${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+        final origenLabel =
+            '${_cuentaOrigen!['tipo'].toString().toUpperCase()} · **** ${_cuentaOrigen!['numero_cuenta'].toString().substring(_cuentaOrigen!['numero_cuenta'].toString().length - 4)}';
+        final beneficiario = _beneficiarios.firstWhere((b) => b.id == _selectedBeneficiaryId);
+        final destinoLabel = '${beneficiario.nombre}\n${beneficiario.banco.nombre}';
+        final descripcion = _descripcionController.text;
+        _montoController.clear();
+        _descripcionController.clear();
+        if (mounted) {
+          _showComprobanteTransferencia(
+            tipo: 'A terceros',
+            origen: origenLabel,
+            destino: destinoLabel,
+            monto: monto,
+            referencia: referencia,
+            descripcion: descripcion,
+            fecha: DateTime.now(),
+          );
+        }
       } else {
         scaffold.showSnackBar(
           SnackBar(content: Text(result['message'] ?? 'Error'), backgroundColor: AppTheme.errorColor),
         );
       }
     }
+  }
+
+  void _showComprobanteTransferencia({
+    required String tipo,
+    required String origen,
+    required String destino,
+    required double monto,
+    required String referencia,
+    required DateTime fecha,
+    String descripcion = '',
+  }) {
+    final fechaFormateada =
+        '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}  '
+        '${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
+
+    final repaintKey = GlobalKey();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Área capturada como imagen al compartir
+              RepaintBoundary(
+                key: repaintKey,
+                child: Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'NorthwestBank',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                      const Text(
+                        'Comprobante de transferencia',
+                        style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.accentColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.check, color: Colors.white, size: 36),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        '¡Transferencia exitosa!',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 8),
+                      _ComprobanteRow(label: 'Tipo', value: tipo),
+                      const SizedBox(height: 10),
+                      _ComprobanteRow(label: 'Origen', value: origen),
+                      const SizedBox(height: 10),
+                      _ComprobanteRow(label: 'Destino', value: destino),
+                      const SizedBox(height: 10),
+                      _ComprobanteRow(
+                        label: 'Monto',
+                        value: '\$${monto.toStringAsFixed(2)} MXN',
+                        valueStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.accentColor,
+                        ),
+                      ),
+                      if (descripcion.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        _ComprobanteRow(label: 'Descripción', value: descripcion),
+                      ],
+                      const SizedBox(height: 10),
+                      _ComprobanteRow(label: 'Referencia', value: referencia),
+                      const SizedBox(height: 10),
+                      _ComprobanteRow(label: 'Fecha', value: fechaFormateada),
+                      const SizedBox(height: 8),
+                      const Divider(),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Botones (fuera del RepaintBoundary, no se capturan)
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        try {
+                          final boundary = repaintKey.currentContext!
+                              .findRenderObject() as RenderRepaintBoundary;
+                          final image = await boundary.toImage(pixelRatio: 3.0);
+                          final byteData = await image.toByteData(
+                            format: ui.ImageByteFormat.png,
+                          );
+                          final pngBytes = byteData!.buffer.asUint8List();
+
+                          final dir = await getTemporaryDirectory();
+                          final file = File('${dir.path}/comprobante_transferencia.png');
+                          await file.writeAsBytes(pngBytes);
+
+                          await Share.shareXFiles(
+                            [XFile(file.path)],
+                            subject: 'Comprobante de transferencia NorthwestBank',
+                          );
+                        } catch (e) {
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(
+                                content: Text('Error al compartir el comprobante'),
+                                backgroundColor: AppTheme.errorColor,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.share_outlined),
+                      label: const Text('Compartir'),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppTheme.primaryColor),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.pop(ctx),
+                      icon: const Icon(Icons.close),
+                      label: const Text('Cerrar'),
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -685,6 +933,51 @@ class _TransfersScreenState extends State<TransfersScreen> {
               ),
             ],
           );
+  }
+}
+
+// ─── Fila del comprobante ────────────────────────────────────────────────────
+
+class _ComprobanteRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final TextStyle? valueStyle;
+
+  const _ComprobanteRow({
+    required this.label,
+    required this.value,
+    this.valueStyle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 90,
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: valueStyle ??
+                const TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
