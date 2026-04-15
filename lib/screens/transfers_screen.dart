@@ -412,6 +412,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
       children: [
         DropdownButtonFormField<Map<String, dynamic>>(
           value: _cuentaOrigen,
+          isExpanded: true,
           decoration: const InputDecoration(
             labelText: 'Cuenta origen',
             prefixIcon: Icon(Icons.account_balance),
@@ -420,6 +421,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
             value: c,
             child: Text(
               '${c['tipo'].toString().toUpperCase()} · **** ${c['numero_cuenta'].toString().substring(c['numero_cuenta'].toString().length - 4)} · \$${double.parse(c['saldo'].toString()).toStringAsFixed(2)}',
+              overflow: TextOverflow.ellipsis,
             ),
           )).toList(),
           onChanged: (value) => setState(() => _cuentaOrigen = value),
@@ -428,6 +430,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
 
         DropdownButtonFormField<Map<String, dynamic>>(
           value: _cuentaDestino,
+          isExpanded: true,
           decoration: const InputDecoration(
             labelText: 'Cuenta destino',
             prefixIcon: Icon(Icons.account_balance_wallet),
@@ -436,6 +439,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
             value: c,
             child: Text(
               '${c['tipo'].toString().toUpperCase()} · **** ${c['numero_cuenta'].toString().substring(c['numero_cuenta'].toString().length - 4)}',
+              overflow: TextOverflow.ellipsis,
             ),
           )).toList(),
           onChanged: (value) => setState(() => _cuentaDestino = value),
@@ -495,6 +499,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
       children: [
         DropdownButtonFormField<CardModel>(
           value: _tarjetaOrigen,
+          isExpanded: true,
           decoration: const InputDecoration(
             labelText: 'Tarjeta origen',
             prefixIcon: Icon(Icons.credit_card),
@@ -503,6 +508,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
             value: c,
             child: Text(
               '${c.tipoCuenta.toUpperCase()} · ${c.numeroCuenta} · \$${c.saldo.toStringAsFixed(2)}',
+              overflow: TextOverflow.ellipsis,
             ),
           )).toList(),
           onChanged: (value) => setState(() => _tarjetaOrigen = value),
@@ -572,6 +578,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
               // Cuenta origen
               DropdownButtonFormField<Map<String, dynamic>>(
                 value: _cuentaOrigen,
+                isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Cuenta origen',
                   prefixIcon: Icon(Icons.account_balance),
@@ -580,6 +587,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
                   value: c,
                   child: Text(
                     '${c['tipo'].toString().toUpperCase()} · **** ${c['numero_cuenta'].toString().substring(c['numero_cuenta'].toString().length - 4)} · \$${double.parse(c['saldo'].toString()).toStringAsFixed(2)}',
+                    overflow: TextOverflow.ellipsis,
                   ),
                 )).toList(),
                 onChanged: (value) => setState(() => _cuentaOrigen = value),
