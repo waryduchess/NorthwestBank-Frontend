@@ -17,7 +17,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   String? selectedTipo;
   String? selectedMonto;
   DateTimeRange? selectedDateRange;
+  double? montoEspecifico;
   String searchQuery = '';
+  final TextEditingController _montoEspecificoController = TextEditingController();
 
   // Controladores
   late TextEditingController searchController;
@@ -37,6 +39,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   @override
   void dispose() {
     searchController.dispose();
+    _montoEspecificoController.dispose();
     super.dispose();
   }
 
@@ -76,12 +79,20 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         if (selectedMonto == 'Egresos' && !transaction.isExpense) return false;
       }
 
-      // Filtro por rango de fechas
+      // Filtro por rango de fechas (incluye todo el día final)
       if (selectedDateRange != null) {
+        final endOfDay = selectedDateRange!.end.copyWith(
+          hour: 23, minute: 59, second: 59, millisecond: 999,
+        );
         if (transaction.fecha.isBefore(selectedDateRange!.start) ||
-            transaction.fecha.isAfter(selectedDateRange!.end)) {
+            transaction.fecha.isAfter(endOfDay)) {
           return false;
         }
+      }
+
+      // Filtro por monto específico
+      if (montoEspecifico != null) {
+        if (transaction.monto.abs() != montoEspecifico) return false;
       }
 
       return true;
@@ -181,7 +192,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             ListTile(
               title: const Text('Todos'),
               onTap: () {
-                setState(() => selectedMonto = null);
+                setState(() {
+                  selectedMonto = null;
+                  montoEspecifico = null;
+                  _montoEspecificoController.clear();
+                });
                 Navigator.pop(context);
                 _applyFilters();
               },
@@ -189,7 +204,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             ListTile(
               title: const Text('Ingresos'),
               onTap: () {
-                setState(() => selectedMonto = 'Ingresos');
+                setState(() {
+                  selectedMonto = 'Ingresos';
+                  montoEspecifico = null;
+                  _montoEspecificoController.clear();
+                });
                 Navigator.pop(context);
                 _applyFilters();
               },
@@ -197,10 +216,41 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             ListTile(
               title: const Text('Egresos'),
               onTap: () {
-                setState(() => selectedMonto = 'Egresos');
+                setState(() {
+                  selectedMonto = 'Egresos';
+                  montoEspecifico = null;
+                  _montoEspecificoController.clear();
+                });
                 Navigator.pop(context);
                 _applyFilters();
               },
+            ),
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: TextField(
+                controller: _montoEspecificoController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Monto exacto',
+                  hintText: 'Ej: 150.00',
+                  prefixIcon: Icon(Icons.attach_money),
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final valor = double.tryParse(_montoEspecificoController.text.trim());
+                setState(() {
+                  montoEspecifico = valor;
+                  if (valor != null) selectedMonto = null;
+                });
+                Navigator.pop(context);
+                _applyFilters();
+              },
+              child: const Text('Aplicar monto exacto'),
             ),
           ],
         ),
@@ -213,8 +263,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       selectedTipo = null;
       selectedMonto = null;
       selectedDateRange = null;
+      montoEspecifico = null;
       searchQuery = '';
       searchController.clear();
+      _montoEspecificoController.clear();
     });
     _applyFilters();
   }
@@ -320,6 +372,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   if (selectedTipo != null ||
                       selectedMonto != null ||
                       selectedDateRange != null ||
+                      montoEspecifico != null ||
                       searchQuery.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
