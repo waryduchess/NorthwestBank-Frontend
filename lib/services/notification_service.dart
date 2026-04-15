@@ -1,64 +1,29 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/notification_model.dart';
+import 'api_service.dart';
+import 'local_notification_service.dart';
 
 class NotificationService {
-  // TODO: Reemplazar esta data mock con llamada a API real cuando backend esté listo
-  static const List<Map<String, dynamic>> _mockNotifications = [
-    {
-      'id': '1',
-      'titulo': 'Transferencia realizada',
-      'mensaje': 'Se transfirió \$150.00 a Juan Pérez',
-      'fecha': '2024-03-23T10:30:00Z',
-      'leida': false,
-      'tipo': 'success',
-    },
-    {
-      'id': '2',
-      'titulo': 'Pago de servicio',
-      'mensaje': 'Tu pago de electricidad ha sido procesado',
-      'fecha': '2024-03-22T15:45:00Z',
-      'leida': true,
-      'tipo': 'info',
-    },
-    {
-      'id': '3',
-      'titulo': 'Retiro de efectivo',
-      'mensaje': 'Retiraste \$200.00 en cajero automático',
-      'fecha': '2024-03-21T08:12:00Z',
-      'leida': true,
-      'tipo': 'info',
-    },
-    {
-      'id': '4',
-      'titulo': 'Alerta de seguridad',
-      'mensaje': 'Se detectó un intento de acceso no autorizado',
-      'fecha': '2024-03-20T22:15:00Z',
-      'leida': false,
-      'tipo': 'warning',
-    },
-  ];
-
   static Future<List<NotificationModel>> getNotifications() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token') ?? '';
 
-      // BACKEND: Descomentar estas líneas cuando API esté lista
-      // final response = await http.get(
-      //   Uri.parse('${ApiService.baseUrl}/notificaciones'),
-      //   headers: {'Authorization': 'Bearer $token'},
-      // );
-      // if (response.statusCode == 200) {
-      //   final data = jsonDecode(response.body);
-      //   final List<dynamic> notifs = data['data'] ?? [];
-      //   return notifs.map((n) => NotificationModel.fromJson(n)).toList();
-      // }
-      // return [];
+      final response = await http.get(
+        Uri.parse('${ApiService.baseUrl}/notificaciones'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
 
-      // POR AHORA: Devolver mock data
-      return _mockNotifications
-          .map((n) => NotificationModel.fromJson(n))
-          .toList();
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        await LocalNotificationService.mostrarSiNuevas(
+          data.map((n) => Map<String, dynamic>.from(n)).toList(),
+        );
+        return data.map((n) => NotificationModel.fromJson(n)).toList();
+      }
+      return [];
     } catch (e) {
       return [];
     }
@@ -69,34 +34,26 @@ class NotificationService {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token') ?? '';
 
-      // BACKEND: Descomentar cuando API esté lista
-      // final response = await http.put(
-      //   Uri.parse('${ApiService.baseUrl}/notificaciones/$id/read'),
-      //   headers: {'Authorization': 'Bearer $token'},
-      // );
-      // return response.statusCode == 200;
-
-      // POR AHORA: Solo retornar true
-      return true;
+      final response = await http.patch(
+        Uri.parse('${ApiService.baseUrl}/notificaciones/$id/leer'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      return response.statusCode == 200;
     } catch (e) {
       return false;
     }
   }
 
-  static Future<bool> deleteNotification(String id) async {
+  static Future<bool> markAllAsRead() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token') ?? '';
 
-      // BACKEND: Descomentar cuando API esté lista
-      // final response = await http.delete(
-      //   Uri.parse('${ApiService.baseUrl}/notificaciones/$id'),
-      //   headers: {'Authorization': 'Bearer $token'},
-      // );
-      // return response.statusCode == 200;
-
-      // POR AHORA: Solo retornar true
-      return true;
+      final response = await http.patch(
+        Uri.parse('${ApiService.baseUrl}/notificaciones/leer-todas'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      return response.statusCode == 200;
     } catch (e) {
       return false;
     }
