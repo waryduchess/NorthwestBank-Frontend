@@ -1,5 +1,9 @@
+import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/card_model.dart';
 import '../models/payment_category_model.dart';
@@ -217,16 +221,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}  '
         '${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
 
-    final textoComprobante =
-        'COMPROBANTE DE PAGO - NorthwestBank\n'
-        '─────────────────────────────\n'
-        'Servicio:   $servicioNombre\n'
-        'Referencia: $referencia\n'
-        'Tarjeta:    ${tarjeta.tipoCuenta} ${tarjeta.numeroCuenta}\n'
-        'Monto:      \$${monto.toStringAsFixed(2)} MXN\n'
-        'Fecha:      $fechaFormateada\n'
-        '─────────────────────────────\n'
-        'Pago procesado exitosamente';
+    final repaintKey = GlobalKey();
 
     showDialog(
       context: context,
@@ -238,65 +233,112 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Ícono de éxito
-              Container(
-                width: 72,
-                height: 72,
-                decoration: const BoxDecoration(
-                  color: AppTheme.accentColor,
-                  shape: BoxShape.circle,
+              // Área capturada como imagen al compartir
+              RepaintBoundary(
+                key: repaintKey,
+                child: Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Logo / encabezado
+                      const Text(
+                        'NorthwestBank',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                      const Text(
+                        'Comprobante de pago',
+                        style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.accentColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.check, color: Colors.white, size: 36),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        '¡Pago exitoso!',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 8),
+                      _ComprobanteRow(label: 'Servicio', value: servicioNombre),
+                      const SizedBox(height: 10),
+                      _ComprobanteRow(label: 'Referencia', value: referencia),
+                      const SizedBox(height: 10),
+                      _ComprobanteRow(
+                        label: 'Tarjeta',
+                        value: '${tarjeta.tipoCuenta}\n${tarjeta.numeroCuenta}',
+                      ),
+                      const SizedBox(height: 10),
+                      _ComprobanteRow(
+                        label: 'Monto',
+                        value: '\$${monto.toStringAsFixed(2)} MXN',
+                        valueStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.accentColor,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _ComprobanteRow(label: 'Fecha', value: fechaFormateada),
+                      const SizedBox(height: 8),
+                      const Divider(),
+                    ],
+                  ),
                 ),
-                child: const Icon(Icons.check, color: Colors.white, size: 40),
               ),
-              const SizedBox(height: 16),
-              const Text(
-                '¡Pago exitoso!',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Divider(),
-              const SizedBox(height: 8),
 
-              // Filas del comprobante
-              _ComprobanteRow(label: 'Servicio', value: servicioNombre),
-              const SizedBox(height: 10),
-              _ComprobanteRow(label: 'Referencia', value: referencia),
-              const SizedBox(height: 10),
-              _ComprobanteRow(
-                label: 'Tarjeta',
-                value: '${tarjeta.tipoCuenta}\n${tarjeta.numeroCuenta}',
-              ),
-              const SizedBox(height: 10),
-              _ComprobanteRow(
-                label: 'Monto',
-                value: '\$${monto.toStringAsFixed(2)} MXN',
-                valueStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.accentColor,
-                ),
-              ),
-              const SizedBox(height: 10),
-              _ComprobanteRow(label: 'Fecha', value: fechaFormateada),
-              const SizedBox(height: 16),
-              const Divider(),
               const SizedBox(height: 16),
 
-              // Botones
+              // Botones (fuera del RepaintBoundary, no se capturan)
               Row(
                 children: [
-                  // Compartir (share nativo del sistema)
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        Share.share(
-                          textoComprobante,
-                          subject: 'Comprobante de pago NorthwestBank',
-                        );
+                      onPressed: () async {
+                        try {
+                          final boundary = repaintKey.currentContext!
+                              .findRenderObject() as RenderRepaintBoundary;
+                          final image = await boundary.toImage(pixelRatio: 3.0);
+                          final byteData = await image.toByteData(
+                            format: ui.ImageByteFormat.png,
+                          );
+                          final pngBytes = byteData!.buffer.asUint8List();
+
+                          final dir = await getTemporaryDirectory();
+                          final file = File('${dir.path}/comprobante_pago.png');
+                          await file.writeAsBytes(pngBytes);
+
+                          await Share.shareXFiles(
+                            [XFile(file.path)],
+                            subject: 'Comprobante de pago NorthwestBank',
+                          );
+                        } catch (e) {
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(
+                                content: Text('Error al compartir el comprobante'),
+                                backgroundColor: AppTheme.errorColor,
+                              ),
+                            );
+                          }
+                        }
                       },
                       icon: const Icon(Icons.share_outlined),
                       label: const Text('Compartir'),
@@ -310,7 +352,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // Cerrar
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () {
