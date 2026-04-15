@@ -103,6 +103,18 @@ class TransactionDetailScreen extends StatelessWidget {
   List<Widget> _buildSpecificDetails(BuildContext context) {
     switch (transaction.tipo) {
       case 'Transferencia':
+        final cuentaContraparte = transaction.isIncome
+            ? transaction.cuentaOrigen
+            : transaction.cuentaDestino;
+        final ultimos4 = (cuentaContraparte != null && cuentaContraparte.length >= 4)
+            ? '**** ${cuentaContraparte.substring(cuentaContraparte.length - 4)}'
+            : '—';
+        final hora =
+            '${transaction.fecha.hour.toString().padLeft(2, '0')}:${transaction.fecha.minute.toString().padLeft(2, '0')}';
+        final nombreContraparte = transaction.isIncome
+            ? transaction.nombreOrigen
+            : transaction.nombreDestino;
+
         return [
           Text(
             'Información de la transferencia',
@@ -111,14 +123,34 @@ class TransactionDetailScreen extends StatelessWidget {
           const SizedBox(height: 16),
           _buildDetailCard(
             icon: Icons.person,
-            title: 'Destinatario/Remitente',
-            value: transaction.descripcion,
+            title: transaction.isIncome ? 'Remitente' : 'Beneficiario',
+            value: nombreContraparte ?? '—',
+          ),
+          const SizedBox(height: 12),
+          _buildDetailCard(
+            icon: Icons.account_balance,
+            title: transaction.isIncome ? 'Cuenta origen' : 'Cuenta destino',
+            value: ultimos4,
+          ),
+          const SizedBox(height: 12),
+          if (transaction.descripcion.isNotEmpty && !transaction.descripcion.startsWith('A ****') && !transaction.descripcion.startsWith('De ****')) ...[
+            _buildDetailCard(
+              icon: Icons.notes,
+              title: 'Concepto',
+              value: transaction.descripcion,
+            ),
+            const SizedBox(height: 12),
+          ],
+          _buildDetailCard(
+            icon: Icons.schedule,
+            title: 'Hora',
+            value: hora,
           ),
           const SizedBox(height: 12),
           _buildDetailCard(
             icon: Icons.confirmation_number,
-            title: 'Número de referencia',
-            value: '#TRF${transaction.id}2026',
+            title: 'Referencia',
+            value: transaction.referencia ?? '—',
           ),
           const SizedBox(height: 12),
           _buildDetailCard(
