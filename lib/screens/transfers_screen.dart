@@ -5,10 +5,10 @@ import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/bank_model.dart';
-import '../models/beneficiary_model.dart';
 import '../models/card_model.dart';
 import '../services/api_service.dart';
 import '../services/card_service.dart';
+import '../services/payment_service.dart';
 import '../services/transfer_service.dart';
 import '../theme/app_theme.dart';
 
@@ -37,10 +37,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
 
   // A terceros
   List<BankModel> _bancos = [];
-  List<BeneficiaryModel> _beneficiarios = [];
   String? _selectedBankId;
-  String? _selectedBeneficiaryId;
-  bool _isLoadingBancos = false;
 
   final TextEditingController _montoController = TextEditingController();
   final TextEditingController _descripcionController = TextEditingController();
@@ -95,15 +92,9 @@ class _TransfersScreenState extends State<TransfersScreen> {
   }
 
   Future<void> _loadBancosAndBeneficiarios() async {
-    setState(() => _isLoadingBancos = true);
     final bancos = await TransferService.getBanks();
-    final beneficiarios = await TransferService.getBeneficiaries();
     if (mounted) {
-      setState(() {
-        _bancos = bancos;
-        _beneficiarios = beneficiarios;
-        _isLoadingBancos = false;
-      });
+      setState(() => _bancos = bancos);
     }
   }
 
@@ -114,111 +105,9 @@ class _TransfersScreenState extends State<TransfersScreen> {
       _descripcionController.clear();
       _numeroTarjetaDestinoController.clear();
       _selectedBankId = null;
-      _selectedBeneficiaryId = null;
+      _nombreBeneficiarioController.clear();
+      _cuentaBeneficiarioController.clear();
     });
-  }
-
-  void _showAddBeneficiaryModal() {
-    _nombreBeneficiarioController.clear();
-    _cuentaBeneficiarioController.clear();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 16,
-          right: 16,
-          top: 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Agregar beneficiario',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _nombreBeneficiarioController,
-              decoration: const InputDecoration(
-                labelText: 'Nombre del beneficiario',
-                prefixIcon: Icon(Icons.person_outline),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _cuentaBeneficiarioController,
-              decoration: const InputDecoration(
-                labelText: 'Número de cuenta',
-                prefixIcon: Icon(Icons.account_balance),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () async {
-                  if (_nombreBeneficiarioController.text.isEmpty ||
-                      _cuentaBeneficiarioController.text.isEmpty ||
-                      _selectedBankId == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Completa todos los campos'),
-                        backgroundColor: AppTheme.errorColor,
-                      ),
-                    );
-                    return;
-                  }
-
-                  final navigator = Navigator.of(context);
-                  final scaffold = ScaffoldMessenger.of(context);
-
-                  final success = await TransferService.addBeneficiary(
-                    nombre: _nombreBeneficiarioController.text,
-                    numeroCuenta: _cuentaBeneficiarioController.text,
-                    bankId: _selectedBankId!,
-                  );
-
-                  if (!mounted) return;
-
-                  if (success) {
-                    navigator.pop();
-                    scaffold.showSnackBar(
-                      const SnackBar(
-                        content: Text('Beneficiario agregado correctamente'),
-                        backgroundColor: AppTheme.accentColor,
-                      ),
-                    );
-                    _loadBancosAndBeneficiarios();
-                  } else {
-                    scaffold.showSnackBar(
-                      const SnackBar(
-                        content: Text('Error al agregar beneficiario'),
-                        backgroundColor: AppTheme.errorColor,
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Guardar beneficiario'),
-              ),
-            ),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
   }
 
   Future<void> _processTransfer() async {
@@ -353,15 +242,27 @@ class _TransfersScreenState extends State<TransfersScreen> {
         );
       }
     } else if (_transferType == 'a_terceros') {
-      if (_cuentaOrigen == null) {
+      if (_tarjetaOrigen == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Selecciona la cuenta origen'), backgroundColor: AppTheme.errorColor),
+          const SnackBar(content: Text('Selecciona la tarjeta origen'), backgroundColor: AppTheme.errorColor),
         );
         return;
       }
-      if (_selectedBankId == null || _selectedBeneficiaryId == null) {
+      if (_nombreBeneficiarioController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Selecciona el banco y beneficiario'), backgroundColor: AppTheme.errorColor),
+          const SnackBar(content: Text('Ingresa el nombre del beneficiario'), backgroundColor: AppTheme.errorColor),
+        );
+        return;
+      }
+      if (_selectedBankId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Selecciona el banco destino'), backgroundColor: AppTheme.errorColor),
+        );
+        return;
+      }
+      if (_cuentaBeneficiarioController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ingresa el número de cuenta del beneficiario'), backgroundColor: AppTheme.errorColor),
         );
         return;
       }
@@ -369,26 +270,32 @@ class _TransfersScreenState extends State<TransfersScreen> {
       setState(() => _isProcessing = true);
       final scaffold = ScaffoldMessenger.of(context);
 
-      final result = await TransferService.processTransfer(
-        cuentaOrigen: _cuentaOrigen!['id'].toString(),
-        monto: monto.toString(),
+      final result = await PaymentService.processPayment(
+        tarjetaId: int.parse(_tarjetaOrigen!.id),
+        monto: monto,
         descripcion: _descripcionController.text,
-        beneficiarioId: _selectedBeneficiaryId,
       );
 
       if (!mounted) return;
       setState(() => _isProcessing = false);
 
-      if (result['success']) {
-        final referencia = result['data']['referencia']?.toString()
-            ?? 'TRF${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-        final origenLabel =
-            '${_cuentaOrigen!['tipo'].toString().toUpperCase()} · **** ${_cuentaOrigen!['numero_cuenta'].toString().substring(_cuentaOrigen!['numero_cuenta'].toString().length - 4)}';
-        final beneficiario = _beneficiarios.firstWhere((b) => b.id == _selectedBeneficiaryId);
-        final destinoLabel = '${beneficiario.nombre}\n${beneficiario.banco.nombre}';
+      if (result['success'] == true) {
+        final banco = _bancos.firstWhere(
+          (b) => b.id == _selectedBankId,
+          orElse: () => BankModel(id: '', nombre: 'Banco', codigo: ''),
+        );
+        final referencia = 'TRF${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+        final origenLabel = '${_tarjetaOrigen!.tipoCuenta.toUpperCase()} · ${_tarjetaOrigen!.numeroCuenta}';
+        final destinoLabel = '${_nombreBeneficiarioController.text.trim()}\n${banco.nombre} · ${_cuentaBeneficiarioController.text.trim()}';
         final descripcion = _descripcionController.text;
+
         _montoController.clear();
         _descripcionController.clear();
+        _nombreBeneficiarioController.clear();
+        _cuentaBeneficiarioController.clear();
+        setState(() => _selectedBankId = null);
+
+        await _loadTarjetas();
         if (mounted) {
           _showComprobanteTransferencia(
             tipo: 'A terceros',
@@ -402,7 +309,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
         }
       } else {
         scaffold.showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'Error'), backgroundColor: AppTheme.errorColor),
+          SnackBar(content: Text(result['message'] ?? 'Error al procesar la transferencia'), backgroundColor: AppTheme.errorColor),
         );
       }
     }
@@ -815,124 +722,120 @@ class _TransfersScreenState extends State<TransfersScreen> {
   }
 
   Widget _buildAlterceros() {
-    return _isLoadingBancos
-        ? const SizedBox(
-            height: 300,
-            child: Center(child: CircularProgressIndicator()),
-          )
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Cuenta origen
-              DropdownButtonFormField<Map<String, dynamic>>(
-                value: _cuentaOrigen,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Cuenta origen',
-                  prefixIcon: Icon(Icons.account_balance),
-                ),
-                items: _cuentas.map((c) => DropdownMenuItem(
-                  value: c,
-                  child: Text(
-                    '${c['tipo'].toString().toUpperCase()} · **** ${c['numero_cuenta'].toString().substring(c['numero_cuenta'].toString().length - 4)} · \$${double.parse(c['saldo'].toString()).toStringAsFixed(2)}',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                )).toList(),
-                onChanged: (value) => setState(() => _cuentaOrigen = value),
-              ),
-              const SizedBox(height: 16),
+    if (_isLoadingTarjetas) {
+      return const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()));
+    }
+    if (_tarjetas.isEmpty) {
+      return const Center(child: Text('No tienes tarjetas disponibles'));
+    }
 
-              // Banco destino
-              DropdownButtonFormField<String>(
-                initialValue: _selectedBankId,
-                decoration: const InputDecoration(
-                  labelText: 'Banco destino',
-                  prefixIcon: Icon(Icons.business),
-                ),
-                items: _bancos
-                    .map((bank) => DropdownMenuItem(
-                          value: bank.id,
-                          child: Text(bank.nombre),
-                        ))
-                    .toList(),
-                onChanged: (value) => setState(() {
-                  _selectedBankId = value;
-                  _selectedBeneficiaryId = null;
-                }),
-              ),
-              const SizedBox(height: 16),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Tarjeta origen
+        DropdownButtonFormField<CardModel>(
+          value: _tarjetaOrigen,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Tarjeta origen',
+            prefixIcon: Icon(Icons.credit_card),
+          ),
+          items: _tarjetas.map((c) => DropdownMenuItem(
+            value: c,
+            child: Text(
+              '${c.tipoCuenta.toUpperCase()} · ${c.numeroCuenta} · \$${c.saldo.toStringAsFixed(2)}',
+              overflow: TextOverflow.ellipsis,
+            ),
+          )).toList(),
+          onChanged: (value) => setState(() => _tarjetaOrigen = value),
+        ),
+        const SizedBox(height: 24),
 
-              // Beneficiario
-              if (_selectedBankId != null) ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _selectedBeneficiaryId,
-                        decoration: const InputDecoration(
-                          labelText: 'Beneficiario',
-                          prefixIcon: Icon(Icons.person),
-                        ),
-                        items: _beneficiarios
-                            .where((b) => b.banco.id == _selectedBankId)
-                            .map((benef) => DropdownMenuItem(
-                                  value: benef.id,
-                                  child: Text(benef.nombre),
-                                ))
-                            .toList(),
-                        onChanged: (value) =>
-                            setState(() => _selectedBeneficiaryId = value),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle_outline,
-                          color: AppTheme.primaryColor),
-                      onPressed: _showAddBeneficiaryModal,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-              ],
+        // Datos del beneficiario
+        const Text(
+          'Datos del beneficiario',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 12),
 
-              // Monto
-              TextField(
-                controller: _montoController,
-                decoration: const InputDecoration(
-                  labelText: 'Monto',
-                  prefixIcon: Icon(Icons.attach_money),
-                  hintText: '0.00',
-                ),
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
-              ),
-              const SizedBox(height: 16),
+        TextField(
+          controller: _nombreBeneficiarioController,
+          decoration: const InputDecoration(
+            labelText: 'Nombre del beneficiario',
+            prefixIcon: Icon(Icons.person_outline),
+          ),
+          textCapitalization: TextCapitalization.words,
+        ),
+        const SizedBox(height: 16),
 
-              // Descripción
-              TextField(
-                controller: _descripcionController,
-                decoration: const InputDecoration(
-                  labelText: 'Descripción (opcional)',
-                  prefixIcon: Icon(Icons.notes),
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 32),
+        DropdownButtonFormField<String>(
+          value: _selectedBankId,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Banco destino',
+            prefixIcon: Icon(Icons.account_balance),
+          ),
+          items: _bancos.map((bank) => DropdownMenuItem(
+            value: bank.id,
+            child: Text(bank.nombre, overflow: TextOverflow.ellipsis),
+          )).toList(),
+          onChanged: (value) => setState(() => _selectedBankId = value),
+        ),
+        const SizedBox(height: 16),
 
-              // Botón transferir
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: _processTransfer,
-                  icon: const Icon(Icons.send),
-                  label: const Text(
-                    'Realizar transferencia',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ),
-              ),
-            ],
-          );
+        TextField(
+          controller: _cuentaBeneficiarioController,
+          decoration: const InputDecoration(
+            labelText: 'Número de cuenta',
+            prefixIcon: Icon(Icons.numbers),
+          ),
+          keyboardType: TextInputType.number,
+        ),
+        const SizedBox(height: 24),
+
+        // Monto
+        TextField(
+          controller: _montoController,
+          decoration: const InputDecoration(
+            labelText: 'Monto',
+            prefixIcon: Icon(Icons.attach_money),
+            hintText: '0.00',
+          ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        ),
+        const SizedBox(height: 16),
+
+        // Descripción
+        TextField(
+          controller: _descripcionController,
+          decoration: const InputDecoration(
+            labelText: 'Descripción (opcional)',
+            prefixIcon: Icon(Icons.notes),
+          ),
+          maxLines: 2,
+        ),
+        const SizedBox(height: 32),
+
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton.icon(
+            onPressed: _isProcessing ? null : _processTransfer,
+            icon: _isProcessing
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.send),
+            label: Text(
+              _isProcessing ? 'Procesando...' : 'Realizar transferencia',
+              style: const TextStyle(fontSize: 16),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
