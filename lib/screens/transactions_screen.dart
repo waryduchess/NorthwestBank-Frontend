@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/transaction_tile.dart';
 import '../models/transaction.dart';
+import '../services/api_service.dart';
 import 'transaction_detail_screen.dart';
 
 class TransactionsScreen extends StatefulWidget {
@@ -22,14 +23,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   late TextEditingController searchController;
 
   // Lista de todas las transacciones
-  late List<Transaction> allTransactions;
-  late List<Transaction> filteredTransactions;
+  List<Transaction> allTransactions = [];
+  List<Transaction> filteredTransactions = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     searchController = TextEditingController();
-    _initializeTransactions();
+    _loadTransactions();
   }
 
   @override
@@ -38,73 +40,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     super.dispose();
   }
 
-  void _initializeTransactions() {
-    allTransactions = [
-      Transaction(
-        id: '1',
-        titulo: 'Transferencia enviada',
-        descripcion: 'A Juan Perez',
-        monto: -500.00,
-        fecha: DateTime(2026, 2, 12),
-        tipo: 'Transferencia',
-        icono: Icons.arrow_upward,
-      ),
-      Transaction(
-        id: '2',
-        titulo: 'Deposito recibido',
-        descripcion: 'Nomina mensual',
-        monto: 3500.00,
-        fecha: DateTime(2026, 2, 10),
-        tipo: 'Deposito',
-        icono: Icons.arrow_downward,
-      ),
-      Transaction(
-        id: '3',
-        titulo: 'Pago de servicio',
-        descripcion: 'Electricidad',
-        monto: -85.50,
-        fecha: DateTime(2026, 2, 8),
-        tipo: 'Pago',
-        icono: Icons.bolt,
-      ),
-      Transaction(
-        id: '4',
-        titulo: 'Transferencia recibida',
-        descripcion: 'De Maria Lopez',
-        monto: 1200.00,
-        fecha: DateTime(2026, 2, 5),
-        tipo: 'Transferencia',
-        icono: Icons.arrow_downward,
-      ),
-      Transaction(
-        id: '5',
-        titulo: 'Pago de servicio',
-        descripcion: 'Agua potable',
-        monto: -45.00,
-        fecha: DateTime(2026, 1, 28),
-        tipo: 'Pago',
-        icono: Icons.water_drop,
-      ),
-      Transaction(
-        id: '6',
-        titulo: 'Retiro ATM',
-        descripcion: 'Cajero Centro',
-        monto: -200.00,
-        fecha: DateTime(2026, 1, 25),
-        tipo: 'Retiro',
-        icono: Icons.atm,
-      ),
-      Transaction(
-        id: '7',
-        titulo: 'Deposito recibido',
-        descripcion: 'Nomina mensual',
-        monto: 3500.00,
-        fecha: DateTime(2026, 1, 10),
-        tipo: 'Deposito',
-        icono: Icons.arrow_downward,
-      ),
-    ];
-    filteredTransactions = allTransactions;
+  Future<void> _loadTransactions() async {
+    setState(() => _isLoading = true);
+    final data = await ApiService.getTransactions();
+    if (mounted) {
+      setState(() {
+        allTransactions = data.map((t) => Transaction.fromBackend(t)).toList();
+        filteredTransactions = allTransactions;
+        _isLoading = false;
+      });
+    }
   }
 
   void _applyFilters() {
@@ -388,55 +333,59 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
             // Lista de transacciones agrupadas
             Expanded(
-              child: filteredTransactions.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.inbox, size: 64, color: Colors.grey[300]),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No hay transacciones',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _buildGroupedList().length,
-                      itemBuilder: (context, index) {
-                        final item = _buildGroupedList()[index];
-                        if (item is String) {
-                          return _buildSectionHeader(item);
-                        } else {
-                          final transaction = item as Transaction;
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      TransactionDetailScreen(
-                                    transaction: transaction,
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : RefreshIndicator(
+                      onRefresh: _loadTransactions,
+                      child: filteredTransactions.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.inbox, size: 64, color: Colors.grey[300]),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'No hay transacciones',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.grey[600],
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                            child: TransactionTile(
-                              titulo: transaction.titulo,
-                              descripcion: transaction.descripcion,
-                              monto: transaction.monto,
-                              fecha:
-                                  '${transaction.fecha.day} ${_getMonthYear(transaction.fecha)}',
-                              icono: transaction.icono,
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: _buildGroupedList().length,
+                              itemBuilder: (context, index) {
+                                final item = _buildGroupedList()[index];
+                                if (item is String) {
+                                  return _buildSectionHeader(item);
+                                } else {
+                                  final transaction = item as Transaction;
+                                  return GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              TransactionDetailScreen(
+                                            transaction: transaction,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: TransactionTile(
+                                      titulo: transaction.titulo,
+                                      descripcion: transaction.descripcion,
+                                      monto: transaction.monto,
+                                      fecha: '${transaction.fecha.day} ${_getMonthYear(transaction.fecha)} · ${transaction.fecha.hour.toString().padLeft(2, '0')}:${transaction.fecha.minute.toString().padLeft(2, '0')}',
+                                      icono: transaction.icono,
+                                    ),
+                                  );
+                                }
+                              },
                             ),
-                          );
-                        }
-                      },
                     ),
             ),
           ],

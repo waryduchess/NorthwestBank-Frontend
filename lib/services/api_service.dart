@@ -259,6 +259,24 @@ class ApiService {
     }
   }
 
+  static Future<List<Map<String, dynamic>>> getTransactions() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.get(
+        Uri.parse('$baseUrl/transacciones'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((t) => Map<String, dynamic>.from(t)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
   static Future<Map<String, dynamic>> updateBiometria({
     required bool activa,
   }) async {
