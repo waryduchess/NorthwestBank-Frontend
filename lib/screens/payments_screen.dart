@@ -148,9 +148,15 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
     setState(() => _processingPayment = true);
 
+    final subcategoria = _subcategories.firstWhere(
+      (s) => s.id == _selectedSubcategoryId,
+      orElse: () => PaymentSubcategoryModel(id: '', categoryId: '', nombre: 'Servicio', codigo: '', orden: 0),
+    );
+
     final result = await PaymentService.processPayment(
       tarjetaId: int.parse(_selectedCard!.id),
       monto: monto,
+      descripcion: subcategoria.nombre,
     );
 
     if (!mounted) return;
@@ -161,8 +167,10 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       final cardIdx = _tarjetas.indexWhere((c) => c.id == _selectedCard!.id);
       final cardPagada = _selectedCard!;
       if (cardIdx != -1) {
-        final nuevoSaldo = (result['saldo_nuevo'] as num?)?.toDouble()
-            ?? (cardPagada.saldo - monto);
+        final esCredito = cardPagada.categoria == 'credito';
+        final nuevoSaldo = esCredito
+            ? (cardPagada.saldo + monto)   // crédito: la deuda aumenta
+            : ((result['saldo_nuevo'] as num?)?.toDouble() ?? (cardPagada.saldo - monto));
         final actualizada = CardModel(
           id: cardPagada.id,
           tipoCuenta: cardPagada.tipoCuenta,
@@ -189,10 +197,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         });
       }
 
-      final subcategoria = _subcategories.firstWhere(
-        (s) => s.id == _selectedSubcategoryId,
-        orElse: () => PaymentSubcategoryModel(id: '', categoryId: '', nombre: 'Servicio', codigo: '', orden: 0),
-      );
       _showComprobante(
         servicioNombre: subcategoria.nombre,
         referencia: referencia,

@@ -257,6 +257,7 @@ class PaymentService {
   static Future<Map<String, dynamic>> processPayment({
     required int tarjetaId,
     required double monto,
+    String? descripcion,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -271,6 +272,7 @@ class PaymentService {
         body: jsonEncode({
           'tarjeta_id': tarjetaId,
           'monto': monto,
+          if (descripcion != null && descripcion.isNotEmpty) 'descripcion': descripcion,
         }),
       );
 

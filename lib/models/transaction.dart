@@ -77,16 +77,18 @@ class Transaction {
       case 'deposito':      return 'Depósito recibido';
       case 'retiro':        return 'Retiro';
       case 'compra':        return 'Compra';
+      case 'servicio':      return 'Pago de servicio';
       default:              return 'Movimiento';
     }
   }
 
   static String _descripcionDefault(String tipo) {
     switch (tipo) {
-      case 'deposito': return 'Depósito externo';
-      case 'retiro':   return 'Retiro de efectivo';
-      case 'compra':   return 'Compra con tarjeta';
-      default:         return '';
+      case 'deposito':  return 'Depósito externo';
+      case 'retiro':    return 'Retiro de efectivo';
+      case 'compra':    return 'Compra con tarjeta';
+      case 'servicio':  return 'Pago de servicio';
+      default:          return '';
     }
   }
 
@@ -96,6 +98,7 @@ class Transaction {
       case 'deposito':      return 'Deposito';
       case 'retiro':        return 'Retiro';
       case 'compra':        return 'Compra';
+      case 'servicio':      return 'Servicio';
       default:              return 'Otro';
     }
   }
@@ -106,6 +109,7 @@ class Transaction {
       case 'deposito':      return Icons.arrow_downward;
       case 'retiro':        return Icons.atm;
       case 'compra':        return Icons.shopping_cart_outlined;
+      case 'servicio':      return Icons.receipt_long_outlined;
       default:              return Icons.swap_horiz;
     }
   }
