@@ -263,6 +263,38 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> transferToThirdParty({
+    required int tarjetaId,
+    required double monto,
+    String? descripcion,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final response = await http.post(
+        Uri.parse('$baseUrl/servicios/servicio'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'tarjeta_id': tarjetaId,
+          'monto': monto,
+          'tipo': 'transferencia',
+          if (descripcion != null && descripcion.isNotEmpty) 'descripcion': descripcion,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'message': data['mensaje'] ?? 'Error al procesar la transferencia'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión. Verifica tu red.'};
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> getTransactions() async {
     try {
       final prefs = await SharedPreferences.getInstance();

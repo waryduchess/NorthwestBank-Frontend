@@ -438,7 +438,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       icon: Icons.swap_horiz,
                       label: 'Transferir',
                       onTap: () => Navigator.pushNamed(context, '/transfers')
-                          .then((_) => _loadUltimosMovimientos()),
+                          .then((_) { _loadUltimosMovimientos(); _loadFavoriteCards(); }),
                     ),
                     QuickActionButton(
                       icon: Icons.receipt_long,
@@ -450,7 +450,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       icon: Icons.payment,
                       label: 'Pagos',
                       onTap: () => Navigator.pushNamed(context, '/payments')
-                          .then((_) => _loadUltimosMovimientos()),
+                          .then((_) { _loadUltimosMovimientos(); _loadFavoriteCards(); }),
                     ),
                     QuickActionButton(
                       icon: Icons.person_outline,

@@ -8,7 +8,6 @@ import '../models/bank_model.dart';
 import '../models/card_model.dart';
 import '../services/api_service.dart';
 import '../services/card_service.dart';
-import '../services/payment_service.dart';
 import '../services/transfer_service.dart';
 import '../theme/app_theme.dart';
 
@@ -270,7 +269,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
       setState(() => _isProcessing = true);
       final scaffold = ScaffoldMessenger.of(context);
 
-      final result = await PaymentService.processPayment(
+      final result = await ApiService.transferToThirdParty(
         tarjetaId: int.parse(_tarjetaOrigen!.id),
         monto: monto,
         descripcion: _descripcionController.text,
