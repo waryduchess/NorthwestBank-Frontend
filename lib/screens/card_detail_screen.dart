@@ -584,7 +584,16 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            _buildDetailRow('Número de Tarjeta', widget.card.numeroCuenta),
+            _buildSensitiveRow(
+              'Número de Tarjeta',
+              _showSensitiveData
+                  ? (widget.card.numeroTarjetaRaw ?? widget.card.numeroCuenta)
+                  : widget.card.numeroCuenta,
+            ),
+            if (widget.card.numeroCuentaBancaria != null) ...[
+              const Divider(),
+              _buildDetailRow('Número de Cuenta', widget.card.numeroCuentaBancaria!),
+            ],
             const Divider(),
             _buildDetailRow('Titular', widget.card.nombreTitular ?? 'N/A'),
             if (widget.card.fechaVencimiento != null) ...[

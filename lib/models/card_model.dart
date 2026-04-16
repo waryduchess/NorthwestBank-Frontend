@@ -17,6 +17,7 @@ class CardModel {
   final String? nip;
   final int? cuentaId;
   final String? numeroTarjetaRaw;
+  final String? numeroCuentaBancaria;
 
   CardModel({
     required this.id,
@@ -37,6 +38,7 @@ class CardModel {
     this.nip,
     this.cuentaId,
     this.numeroTarjetaRaw,
+    this.numeroCuentaBancaria,
   });
 
   // Constructor para tarjetas solicitables (inactivas)
@@ -105,6 +107,7 @@ class CardModel {
       nip: json['nip'] as String?,
       cuentaId: json['cuenta_id'] as int?,
       numeroTarjetaRaw: rawNumero,
+      numeroCuentaBancaria: json['numero_cuenta'] as String?,
     );
   }
 

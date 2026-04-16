@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/bank_model.dart';
@@ -791,8 +792,11 @@ class _TransfersScreenState extends State<TransfersScreen> {
           decoration: const InputDecoration(
             labelText: 'Número de cuenta',
             prefixIcon: Icon(Icons.numbers),
+            counterText: '',
           ),
           keyboardType: TextInputType.number,
+          maxLength: 10,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
         const SizedBox(height: 24),
 
